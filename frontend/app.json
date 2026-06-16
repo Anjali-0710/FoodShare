@@ -14,8 +14,17 @@
     "ios": {
       "supportsTablet": true
     },
+    "android": {
+      "package": "com.foodshareai.app"
+    },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c64326ae-0f9a-4ec0-86b4-0943e1d038c8"
+      }
+    },
+    "owner": "foodshareai"
   }
 }
