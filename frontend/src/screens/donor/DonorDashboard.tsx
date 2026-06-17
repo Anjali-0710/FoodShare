@@ -4,19 +4,14 @@ import { useSelector, useDispatch } from 'react-redux';
 import { PlusCircle, History, LogOut, RefreshCw, Sun, Moon, ArrowRight, ShieldAlert, List, UserCircle, MapPin, Camera } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
 interface DonorDashboardProps {
   theme: AppTheme;
   navigate: (screen: string) => void;
 }
-
-const MOCK_DONATIONS = [
-  { _id: 'don001', foodType: 'Cooked Rice & Curry', quantity: 50, unit: 'Plates', status: 'Pending', pickupAddress: '12 MG Road, Bengaluru', freshnessScore: 92 },
-  { _id: 'don002', foodType: 'Fresh Vegetables', quantity: 30, unit: 'Kg', status: 'Accepted', pickupAddress: '5 Brigade Road, Bengaluru', freshnessScore: 88 },
-  { _id: 'don003', foodType: 'Bakery Surplus', quantity: 80, unit: 'Packets', status: 'Assigned', pickupAddress: '7 Indiranagar, Bengaluru', freshnessScore: 76 },
-];
 
 export const DonorDashboard: React.FC<DonorDashboardProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
@@ -27,27 +22,27 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ theme, navigate 
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
-      const donationRes = await apiCall('/donations?mine=true', { token });
-      if (donationRes.success) {
-        const active = donationRes.donations.filter((d: any) =>
-          ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
-        );
-        setActiveDonations(active);
-        const completed = donationRes.donations.filter((d: any) => d.status === 'Completed');
-        const savedKg = completed.reduce((sum: number, d: any) => {
-          let factor = 1;
-          if (d.unit === 'Plates') factor = 0.4;
-          else if (d.unit === 'Packets') factor = 0.3;
-          return sum + (d.quantity * factor);
-        }, 0);
-        setStats({ totalDonations: donationRes.donations.length, foodSavedKg: Math.round(savedKg * 10) / 10, activeCount: active.length });
-      }
+      const donations = await DonationService.getDonations({ donorId: user.id });
+      const active = donations.filter((d: any) =>
+        ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
+      );
+      setActiveDonations(active);
+      const completed = donations.filter((d: any) => d.status === 'Completed' || d.status === 'Delivered');
+      const savedKg = completed.reduce((sum: number, d: any) => {
+        let factor = 1;
+        if (d.unit === 'Plates') factor = 0.4;
+        else if (d.unit === 'Packets') factor = 0.3;
+        return sum + (d.quantity * factor);
+      }, 0);
+      setStats({ totalDonations: donations.length, foodSavedKg: Math.round(savedKg * 10) / 10, activeCount: active.length });
     } catch (error) {
-      // Backend offline — use demo data so dashboard renders
-      setActiveDonations(MOCK_DONATIONS);
-      setStats({ totalDonations: 18, foodSavedKg: 142.5, activeCount: MOCK_DONATIONS.length });
+      console.error('Failed to load donations:', error);
+      // Show empty state on error — no more mock data
+      setActiveDonations([]);
+      setStats({ totalDonations: 0, foodSavedKg: 0, activeCount: 0 });
     } finally {
       setLoading(false);
     }
@@ -57,7 +52,8 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ theme, navigate 
     fetchData();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await AuthService.logout();
     dispatch(logout());
     navigate('Login');
   };

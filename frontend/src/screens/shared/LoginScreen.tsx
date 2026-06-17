@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
 import { useDispatch } from 'react-redux';
 import { Mail, Lock, LogIn, Eye, EyeOff, Sun, Moon, Leaf } from 'lucide-react-native';
 import { setCredentials, toggleTheme } from '../../store/authSlice';
-import { apiCall } from '../../services/api';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
 interface LoginScreenProps {
@@ -44,31 +44,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOt
     setError(null);
 
     try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: { email: email.trim().toLowerCase(), password }
-      });
+      const response = await AuthService.login(email, password);
 
-      if (response.success) {
+      if (response.success && response.token && response.user) {
         dispatch(setCredentials({ user: response.user, token: response.token, rememberMe }));
         navigate('Dashboard');
+      } else if (response.isVerified === false) {
+        if (setOtpEmail) setOtpEmail(response.email || email.trim().toLowerCase());
+        navigate('OTP');
+        return;
       } else {
         setError(response.message || 'Login failed. Please check your credentials and try again.');
       }
     } catch (err: any) {
-      if (err.status === 403 && err.data?.isVerified === false) {
-        if (setOtpEmail) setOtpEmail(err.data.email || email.trim().toLowerCase());
-        if (setOtpDemoCode && err.data.code) setOtpDemoCode(err.data.code);
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('email not confirmed') || msg.includes('not verified')) {
+        if (setOtpEmail) setOtpEmail(email.trim().toLowerCase());
         navigate('OTP');
         return;
       }
-      const msg = (err.message || '').toLowerCase();
-      if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password')) {
+      if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password') || msg.includes('credentials')) {
         setError('Incorrect email or password. Please try again.');
       } else if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect') || msg.includes('failed')) {
-        setError('Unable to connect to the server. Please check your connection and try again.');
+        setError('Unable to connect. Please check your internet connection and try again.');
       } else {
-        setError('Login failed. Please try again.');
+        setError(err.message || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);

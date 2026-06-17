@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
 import { useDispatch } from 'react-redux';
 import { User, Mail, Lock, Phone, MapPin, Award, ArrowLeft } from 'lucide-react-native';
 import { setCredentials } from '../../store/authSlice';
-import { apiCall } from '../../services/api';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
 interface RegisterScreenProps {
@@ -71,26 +71,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
     const longitude = 77.5946 + offsetLng;
 
     try {
-      // Register directly in backend — no Firebase needed
-      const response = await apiCall('/auth/register', {
-        method: 'POST',
-        body: {
-          name,
-          email,
-          password,
-          role,
-          contactNumber,
-          address: address || 'Bengaluru, Karnataka',
-          latitude,
-          longitude,
-          ngoCapacity: role === 'ngo' ? Number(ngoCapacity) : undefined,
-          foodTypePreference: preferences
-        }
+      const response = await AuthService.register({
+        name,
+        email,
+        password,
+        role,
+        contactNumber,
+        address: address || 'Bengaluru, Karnataka',
+        latitude,
+        longitude,
+        ngoCapacity: role === 'ngo' ? Number(ngoCapacity) : undefined,
+        foodTypePreference: preferences
       });
 
       if (response.success) {
         if (setOtpEmail) setOtpEmail(email);
-        if (setOtpDemoCode && response.code) setOtpDemoCode(response.code);
         navigate('OTP');
       } else {
         setError(response.message || 'Registration failed. Please try again.');
@@ -98,10 +93,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
     } catch (err: any) {
       console.error('Registration failed:', err);
       const msg = err.message || '';
-      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('exists')) {
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
         setError('An account with this email already exists. Please sign in instead.');
       } else if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connect')) {
-        setError('Cannot reach the server. Make sure the backend is running on port 5000.');
+        setError('Cannot reach the server. Please check your internet connection.');
       } else {
         setError(msg || 'Registration failed. Please try again.');
       }

@@ -5,7 +5,8 @@ import { store, RootState } from './src/store';
 import { lightTheme, darkTheme } from './src/theme/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import NotificationToast from './src/components/NotificationToast';
-
+import { supabase } from './src/services/supabase';
+import { AuthService } from './src/services/authService';
 import { setCredentials, logout } from './src/store/authSlice';
 
 // Programmatically load Google Fonts Outfit web asset
@@ -30,81 +31,34 @@ const AppContent: React.FC = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [otpEmail, setOtpEmail] = useState('');
-  const [otpDemoCode, setOtpDemoCode] = useState('');
 
   // Selected Theme Choice
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
 
-  // JWT session persistence — validates real JWT format before restoring from local/session storage
+  // Supabase Auth session persistence — restores session on app load and listens for changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      let token = null;
-      let userStr = null;
-      let isSession = false;
-
-      // 1. Try reading from localStorage first
-      if (window.localStorage) {
-        token = window.localStorage.getItem('fs_token');
-        userStr = window.localStorage.getItem('fs_user');
+    // Restore existing session
+    AuthService.getSession().then((sessionData) => {
+      if (sessionData && !isAuthenticated) {
+        dispatch(setCredentials({ user: sessionData.user, token: sessionData.token }));
       }
+    });
 
-      // 2. If not found, fall back to sessionStorage
-      if ((!token || !userStr) && window.sessionStorage) {
-        token = window.sessionStorage.getItem('fs_token');
-        userStr = window.sessionStorage.getItem('fs_user');
-        isSession = true;
+    // Listen for auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        dispatch(logout());
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Refresh profile data
+        const sessionData = await AuthService.getSession();
+        if (sessionData) {
+          dispatch(setCredentials({ user: sessionData.user, token: sessionData.token }));
+        }
       }
+    });
 
-      // A real JWT has exactly 3 dot-separated base64 segments
-      const isRealJwt = (t: string) => {
-        const parts = t.split('.');
-        return parts.length === 3 && parts.every(p => p.length > 0);
-      };
-
-      if (token && userStr && isRealJwt(token)) {
-        try {
-          const parsedUser = JSON.parse(userStr);
-          // Validate user object has required fields before restoring
-          if (parsedUser?.id && parsedUser?.role && parsedUser?.email) {
-            if (!isAuthenticated) {
-              dispatch(setCredentials({ user: parsedUser, token, rememberMe: !isSession }));
-            }
-          } else {
-            // Corrupt user data — clear from both storages
-            if (window.localStorage) {
-              window.localStorage.removeItem('fs_token');
-              window.localStorage.removeItem('fs_user');
-            }
-            if (window.sessionStorage) {
-              window.sessionStorage.removeItem('fs_token');
-              window.sessionStorage.removeItem('fs_user');
-            }
-          }
-        } catch (e) {
-          // Corrupt session — clear from both storages
-          if (window.localStorage) {
-            window.localStorage.removeItem('fs_token');
-            window.localStorage.removeItem('fs_user');
-          }
-          if (window.sessionStorage) {
-            window.sessionStorage.removeItem('fs_token');
-            window.sessionStorage.removeItem('fs_user');
-          }
-        }
-      } else if (token && !isRealJwt(token)) {
-        // Stale demo/mock token — clear it from both storages
-        if (window.localStorage) {
-          window.localStorage.removeItem('fs_token');
-          window.localStorage.removeItem('fs_user');
-        }
-        if (window.sessionStorage) {
-          window.sessionStorage.removeItem('fs_token');
-          window.sessionStorage.removeItem('fs_user');
-        }
-        console.info('[FoodShare] Cleared invalid session token.');
-      }
-    }
-  }, [dispatch, isAuthenticated]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Track authentication states to reset current routing screen
   useEffect(() => {
@@ -166,8 +120,6 @@ const AppContent: React.FC = () => {
           setScreen={setScreen} 
           otpEmail={otpEmail}
           setOtpEmail={setOtpEmail}
-          otpDemoCode={otpDemoCode}
-          setOtpDemoCode={setOtpDemoCode}
         />
       </View>
     </SafeAreaView>

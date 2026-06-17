@@ -93,8 +93,6 @@ interface AppNavigatorProps {
   setScreen: (screen: string) => void;
   otpEmail?: string;
   setOtpEmail?: (email: string) => void;
-  otpDemoCode?: string;
-  setOtpDemoCode?: (code: string) => void;
 }
 
 export const AppNavigator: React.FC<AppNavigatorProps> = ({ 
@@ -103,8 +101,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
   setScreen,
   otpEmail,
   setOtpEmail,
-  otpDemoCode,
-  setOtpDemoCode
 }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
@@ -118,14 +114,14 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
       }
       switch (currentScreen) {
         case 'Register':
-          return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
+          return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
         case 'ForgotPassword':
           return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
         case 'OTP':
           return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
         case 'Login':
         default:
-          return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
+          return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
       }
     }
     
@@ -143,14 +139,14 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
   if (!isAuthenticated || !user) {
     switch (currentScreen) {
       case 'Register':
-        return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
+        return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
       case 'ForgotPassword':
         return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
       case 'OTP':
         return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
       case 'Login':
       default:
-        return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
+        return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
     }
   }
 
