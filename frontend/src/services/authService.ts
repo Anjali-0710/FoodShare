@@ -142,35 +142,40 @@ export class AuthService {
    * Get current session & user profile
    */
   static async getSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) return null;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) return null;
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
 
-    if (!profile) return null;
+      if (!profile) return null;
 
-    return {
-      token: session.access_token,
-      user: {
-        id: session.user.id,
-        name: profile.name,
-        email: profile.email,
-        role: profile.role as any,
-        contactNumber: profile.contact_number ?? '',
-        address: profile.address ?? '',
-        gpsLocation: profile.latitude && profile.longitude
-          ? { latitude: profile.latitude, longitude: profile.longitude }
-          : undefined,
-        ngoCapacity: profile.ngo_capacity ?? undefined,
-        foodTypePreference: profile.food_type_preference ?? [],
-        volunteerScore: profile.volunteer_score ?? 0,
-        completedPickups: profile.completed_pickups ?? 0,
-      },
-    };
+      return {
+        token: session.access_token,
+        user: {
+          id: session.user.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role as any,
+          contactNumber: profile.contact_number ?? '',
+          address: profile.address ?? '',
+          gpsLocation: profile.latitude && profile.longitude
+            ? { latitude: profile.latitude, longitude: profile.longitude }
+            : undefined,
+          ngoCapacity: profile.ngo_capacity ?? undefined,
+          foodTypePreference: profile.food_type_preference ?? [],
+          volunteerScore: profile.volunteer_score ?? 0,
+          completedPickups: profile.completed_pickups ?? 0,
+        },
+      };
+    } catch (err) {
+      console.error('Error in AuthService.getSession:', err);
+      return null;
+    }
   }
 
   /**

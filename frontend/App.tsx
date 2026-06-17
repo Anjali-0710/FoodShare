@@ -37,27 +37,45 @@ const AppContent: React.FC = () => {
 
   // Supabase Auth session persistence — restores session on app load and listens for changes
   useEffect(() => {
-    // Restore existing session
-    AuthService.getSession().then((sessionData) => {
-      if (sessionData && !isAuthenticated) {
-        dispatch(setCredentials({ user: sessionData.user, token: sessionData.token }));
-      }
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        dispatch(logout());
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Refresh profile data
-        const sessionData = await AuthService.getSession();
-        if (sessionData) {
+    // Restore existing session safely
+    AuthService.getSession()
+      .then((sessionData) => {
+        if (sessionData && !isAuthenticated) {
           dispatch(setCredentials({ user: sessionData.user, token: sessionData.token }));
         }
-      }
-    });
+      })
+      .catch((err) => {
+        console.error('Failed to restore session:', err);
+      });
 
-    return () => subscription.unsubscribe();
+    // Listen for auth state changes (login, logout, token refresh)
+    let subscription: any;
+    try {
+      const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (event === 'SIGNED_OUT' || !session) {
+            dispatch(logout());
+          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // Refresh profile data
+            const sessionData = await AuthService.getSession();
+            if (sessionData) {
+              dispatch(setCredentials({ user: sessionData.user, token: sessionData.token }));
+            }
+          }
+        } catch (innerErr) {
+          console.error('Error in auth state change handler:', innerErr);
+        }
+      });
+      subscription = authListener.data?.subscription;
+    } catch (err) {
+      console.error('Failed to setup auth state change listener:', err);
+    }
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // Track authentication states to reset current routing screen
