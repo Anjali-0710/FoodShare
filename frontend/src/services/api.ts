@@ -1,4 +1,9 @@
-const API_URL = 'http://10.188.84.7:5000/api';
+// Resolve API base URL dynamically for Web client; fallback to production URL for Mobile client.
+const isWeb = typeof window !== 'undefined' && window.document;
+const API_URL = isWeb 
+  ? `${window.location.origin}/api`
+  : 'https://foodshare-platform.onrender.com/api'; // Placeholder: Will be updated with user's specific Render URL
+
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
