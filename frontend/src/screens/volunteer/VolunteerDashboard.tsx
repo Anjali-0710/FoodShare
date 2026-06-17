@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   Award, Navigation, LogOut, RefreshCw, Sun, Moon, ArrowRight,
   ClipboardCheck, Bell, History, Shield, Zap, CheckCircle, Clock
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import {

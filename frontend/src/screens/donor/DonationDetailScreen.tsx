@@ -24,7 +24,7 @@ import {
   User,
   AlertTriangle,
   RefreshCw,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateDonationInList } from '../../store/donationSlice';
 import { apiCall } from '../../services/api';

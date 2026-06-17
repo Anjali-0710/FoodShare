@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ArrowLeft, CheckSquare, Sparkles, Navigation, QrCode, Phone, MapPin, Milestone, Clock, Calendar } from 'lucide-react';
+import { ArrowLeft, CheckSquare, Sparkles, Navigation, QrCode, Phone, MapPin, Milestone, Clock, Calendar } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateKarmaPoints } from '../../store/authSlice';
 import { setSubStatus, addVolunteerNotification } from '../../store/volunteerSlice';

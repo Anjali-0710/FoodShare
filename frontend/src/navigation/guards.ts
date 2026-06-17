@@ -25,7 +25,7 @@ export const checkRouteAccess = (
   user: { role: string } | null,
   targetScreen: string
 ): RouteAccessResult => {
-  const isAuthScreen = ['Login', 'Register', 'ForgotPassword'].includes(targetScreen);
+  const isAuthScreen = ['Login', 'Register', 'ForgotPassword', 'OTP'].includes(targetScreen);
 
   // 1. Unauthenticated checks
   if (!isAuthenticated || !user) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, TextInput, TouchableOpacity, Easing } from 'react-native';
-import { Scan, QrCode, AlertCircle } from 'lucide-react';
+import { Scan, QrCode, AlertCircle } from 'lucide-react-native';
 import { AppTheme } from '../theme/theme';
 
 interface QRScannerMockProps {

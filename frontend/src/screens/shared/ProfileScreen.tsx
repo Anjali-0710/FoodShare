@@ -22,7 +22,7 @@ import {
   LogOut,
   Sun,
   Moon,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme, updateProfile } from '../../store/authSlice';
 import { apiCall } from '../../services/api';

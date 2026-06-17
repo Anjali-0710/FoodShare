@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ShieldX, LogOut } from 'lucide-react';
+import { ShieldX, LogOut } from 'lucide-react-native';
 import { RootState } from '../store';
 import { logout } from '../store/authSlice';
 import { AppTheme } from '../theme/theme';
@@ -11,6 +11,7 @@ import { ROLE_SCREENS, checkRouteAccess } from './guards';
 import LoginScreen from '../screens/shared/LoginScreen';
 import RegisterScreen from '../screens/shared/RegisterScreen';
 import ForgotPasswordScreen from '../screens/shared/ForgotPasswordScreen';
+import OTPScreen from '../screens/shared/OTPScreen';
 
 import DonorDashboard from '../screens/donor/DonorDashboard';
 import CreateDonationScreen from '../screens/donor/CreateDonationScreen';
@@ -90,9 +91,21 @@ interface AppNavigatorProps {
   theme: AppTheme;
   currentScreen: string;
   setScreen: (screen: string) => void;
+  otpEmail?: string;
+  setOtpEmail?: (email: string) => void;
+  otpDemoCode?: string;
+  setOtpDemoCode?: (code: string) => void;
 }
 
-export const AppNavigator: React.FC<AppNavigatorProps> = ({ theme, currentScreen, setScreen }) => {
+export const AppNavigator: React.FC<AppNavigatorProps> = ({ 
+  theme, 
+  currentScreen, 
+  setScreen,
+  otpEmail,
+  setOtpEmail,
+  otpDemoCode,
+  setOtpDemoCode
+}) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
   // Run the unified Route & Role guards check
@@ -100,17 +113,19 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ theme, currentScreen
 
   if (!access.allowed) {
     if (access.redirectScreen === 'Login') {
-      if (currentScreen !== 'Login' && currentScreen !== 'Register' && currentScreen !== 'ForgotPassword') {
+      if (currentScreen !== 'Login' && currentScreen !== 'Register' && currentScreen !== 'ForgotPassword' && currentScreen !== 'OTP') {
         setTimeout(() => setScreen('Login'), 0);
       }
       switch (currentScreen) {
         case 'Register':
-          return <RegisterScreen theme={theme} navigate={setScreen} />;
+          return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
         case 'ForgotPassword':
           return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
+        case 'OTP':
+          return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
         case 'Login':
         default:
-          return <LoginScreen theme={theme} navigate={setScreen} />;
+          return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
       }
     }
     
@@ -128,12 +143,14 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ theme, currentScreen
   if (!isAuthenticated || !user) {
     switch (currentScreen) {
       case 'Register':
-        return <RegisterScreen theme={theme} navigate={setScreen} />;
+        return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
       case 'ForgotPassword':
         return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
+      case 'OTP':
+        return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
       case 'Login':
       default:
-        return <LoginScreen theme={theme} navigate={setScreen} />;
+        return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} setOtpDemoCode={setOtpDemoCode} />;
     }
   }
 

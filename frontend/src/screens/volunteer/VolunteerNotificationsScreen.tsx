@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ArrowLeft, Bell, CheckCheck, Package, Truck, Award } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCheck, Package, Truck, Award } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { markNotificationRead, markAllNotificationsRead } from '../../store/volunteerSlice';
 import { AppTheme } from '../../theme/theme';

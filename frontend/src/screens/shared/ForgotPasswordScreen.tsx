@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import { Mail, ArrowLeft, CheckCircle2, Lock, KeyRound } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle2, Lock, KeyRound } from 'lucide-react-native';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';
 
@@ -19,7 +19,6 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [demoCode, setDemoCode] = useState<string | null>(null);
 
   const handleRequestCode = async () => {
     if (!email.trim()) {
@@ -43,10 +42,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
       
       if (response.success) {
         setStep(2);
-        setStatus('A verification code has been generated and printed to system logs.');
-        if (response.code) {
-          setDemoCode(response.code); // Store for demo convenience
-        }
+        setStatus('A verification code has been sent to your email address.');
       } else {
         setError(response.message || 'Failed to send verification code.');
       }
@@ -96,7 +92,6 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
         setCode('');
         setNewPassword('');
         setConfirmPassword('');
-        setDemoCode(null);
       } else {
         setError(response.message || 'Failed to reset password.');
       }
@@ -122,7 +117,6 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
             setStep(1);
             setError(null);
             setStatus(null);
-            setDemoCode(null);
           } else {
             navigate('Login');
           }
@@ -194,15 +188,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
           </>
         ) : (
           <>
-            {/* Demo code helper alert banner */}
-            {demoCode && (
-              <View style={[styles.demoBanner, { backgroundColor: theme.colors.warning + '12', borderColor: theme.colors.warning + '40' }]}>
-                <Text style={[styles.demoTitle, { color: theme.colors.warning }]}>Demo Verification Code</Text>
-                <Text style={[styles.demoText, { color: theme.colors.text }]}>
-                  Copy this generated code to reset: <Text style={{ fontWeight: '800', fontSize: 15 }}>{demoCode}</Text>
-                </Text>
-              </View>
-            )}
+
 
             <Text style={[styles.fieldLabel, { color: theme.colors.textSecondary }]}>Verification Code</Text>
             <View style={[styles.inputContainer, { borderColor: theme.colors.border }]}>
@@ -264,7 +250,6 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
               onPress={() => {
                 setStep(1);
                 setError(null);
-                setDemoCode(null);
               }}
             >
               <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>Request Another Code</Text>

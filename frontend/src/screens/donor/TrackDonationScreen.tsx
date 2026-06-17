@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, Clock, ShieldCheck, MapPin, PhoneCall, QrCode } from 'lucide-react';
+import { ArrowLeft, Clock, ShieldCheck, MapPin, PhoneCall, QrCode } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';

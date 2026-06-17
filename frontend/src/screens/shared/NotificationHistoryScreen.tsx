@@ -5,7 +5,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import {
   ArrowLeft, Search, Calendar, Inbox, Clock, User, Filter, AlertCircle, Info, ShieldCheck
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setHistory, setLoading, setError } from '../../store/notificationSlice';
 import NotificationService from '../../services/notificationService';

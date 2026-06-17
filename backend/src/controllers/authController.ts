@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { mockUsers, MockUser } from '../config/mockDb';
 import { getDbStatus } from '../config/db';
+import { sendVerificationEmail } from '../services/emailService';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'foodshare-super-secret-key';
 
@@ -45,6 +46,10 @@ export const register = async (req: Request, res: Response) => {
 
     const gpsLocation = latitude && longitude ? { latitude: Number(latitude), longitude: Number(longitude) } : undefined;
 
+    // Generate random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
     let newUser: any;
 
     if (isDb) {
@@ -57,7 +62,10 @@ export const register = async (req: Request, res: Response) => {
         address,
         gpsLocation,
         ngoCapacity: role === 'ngo' ? (ngoCapacity || 100) : undefined,
-        foodTypePreference: (role === 'ngo' || role === 'volunteer') ? (foodTypePreference || []) : undefined
+        foodTypePreference: (role === 'ngo' || role === 'volunteer') ? (foodTypePreference || []) : undefined,
+        isVerified: false,
+        verificationCode: otp,
+        verificationExpires: expires
       });
       
       newUser = {
@@ -84,6 +92,9 @@ export const register = async (req: Request, res: Response) => {
         foodTypePreference: (role === 'ngo' || role === 'volunteer') ? (foodTypePreference || []) : [],
         volunteerScore: 0,
         completedPickups: 0,
+        isVerified: false,
+        verificationCode: otp,
+        verificationExpires: expires,
         createdAt: new Date()
       };
       mockUsers.push(mockUserObj);
@@ -98,13 +109,15 @@ export const register = async (req: Request, res: Response) => {
       };
     }
 
-    const token = generateToken(newUser);
+    console.info(`[FoodShare Auth] Email verification code requested for: ${email}. Code generated: ${otp}`);
+    
+    // Send the real verification email via Nodemailer
+    await sendVerificationEmail(email, otp);
 
     return res.status(201).json({
       success: true,
-      message: 'Registration successful',
-      token,
-      user: newUser
+      message: 'Registration successful. Please verify your email using the OTP sent.',
+      email
     });
 
   } catch (error: any) {
@@ -123,12 +136,38 @@ export const login = async (req: Request, res: Response) => {
   try {
     const isDb = getDbStatus();
     let user: any = null;
+    let isVerified = true;
 
     if (isDb) {
       const dbUser = await User.findOne({ email });
       if (dbUser) {
         const isMatch = await bcrypt.compare(password, dbUser.passwordHash);
         if (isMatch) {
+          if (dbUser.isVerified === false) {
+            isVerified = false;
+            // Regenerate verification code if missing or expired
+            let otp = dbUser.verificationCode;
+            let expires = dbUser.verificationExpires;
+            if (!otp || !expires || expires < new Date()) {
+              otp = Math.floor(100000 + Math.random() * 900000).toString();
+              expires = new Date(Date.now() + 5 * 60 * 1000);
+              dbUser.verificationCode = otp;
+              dbUser.verificationExpires = expires;
+              await dbUser.save();
+            }
+            console.info(`[FoodShare Auth] Unverified login attempt for: ${email}. Code: ${otp}`);
+            
+            // Send verification email via Nodemailer
+            await sendVerificationEmail(email, otp);
+
+            return res.status(403).json({
+              success: false,
+              message: 'Please verify your email address before logging in.',
+              isVerified: false,
+              email
+            });
+          }
+
           user = {
             id: dbUser._id.toString(),
             name: dbUser.name,
@@ -149,6 +188,29 @@ export const login = async (req: Request, res: Response) => {
       if (mockUser) {
         const isMatch = await bcrypt.compare(password, mockUser.passwordHash);
         if (isMatch) {
+          if (mockUser.isVerified === false) {
+            isVerified = false;
+            let otp = mockUser.verificationCode;
+            let expires = mockUser.verificationExpires;
+            if (!otp || !expires || expires < new Date()) {
+              otp = Math.floor(100000 + Math.random() * 900000).toString();
+              expires = new Date(Date.now() + 5 * 60 * 1000);
+              mockUser.verificationCode = otp;
+              mockUser.verificationExpires = expires;
+            }
+            console.info(`[FoodShare Auth] Unverified login attempt for: ${email}. Code: ${otp}`);
+            
+            // Send verification email via Nodemailer
+            await sendVerificationEmail(email, otp);
+
+            return res.status(403).json({
+              success: false,
+              message: 'Please verify your email address before logging in.',
+              isVerified: false,
+              email
+            });
+          }
+
           user = {
             id: mockUser.id,
             name: mockUser.name,
@@ -370,5 +432,151 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
   } catch (error: any) {
     console.error('Update profile error:', error);
     return res.status(500).json({ success: false, message: 'Server error updating profile', error: error.message });
+  }
+};
+
+export const verifyOtp = async (req: Request, res: Response) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return res.status(400).json({ success: false, message: 'Please provide email and verification code' });
+  }
+
+  try {
+    const isDb = getDbStatus();
+    let userFound = false;
+    let codeValid = false;
+    let verifiedUserObj: any = null;
+
+    if (isDb) {
+      const user = await User.findOne({ email });
+      if (user) {
+        userFound = true;
+        if (
+          user.verificationCode === code &&
+          user.verificationExpires &&
+          user.verificationExpires > new Date()
+        ) {
+          codeValid = true;
+          user.isVerified = true;
+          user.verificationCode = undefined;
+          user.verificationExpires = undefined;
+          await user.save();
+
+          verifiedUserObj = {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            contactNumber: user.contactNumber,
+            address: user.address,
+            gpsLocation: user.gpsLocation,
+            ngoCapacity: user.ngoCapacity,
+            foodTypePreference: user.foodTypePreference,
+            volunteerScore: user.volunteerScore,
+            completedPickups: user.completedPickups
+          };
+        }
+      }
+    } else {
+      const mockUserIndex = mockUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+      if (mockUserIndex !== -1) {
+        userFound = true;
+        const mockUser = mockUsers[mockUserIndex];
+        if (
+          mockUser.verificationCode === code &&
+          mockUser.verificationExpires &&
+          mockUser.verificationExpires > new Date()
+        ) {
+          codeValid = true;
+          mockUser.isVerified = true;
+          mockUser.verificationCode = undefined;
+          mockUser.verificationExpires = undefined;
+
+          verifiedUserObj = {
+            id: mockUser.id,
+            name: mockUser.name,
+            email: mockUser.email,
+            role: mockUser.role,
+            contactNumber: mockUser.contactNumber,
+            address: mockUser.address,
+            gpsLocation: mockUser.gpsLocation,
+            ngoCapacity: mockUser.ngoCapacity,
+            foodTypePreference: mockUser.foodTypePreference,
+            volunteerScore: mockUser.volunteerScore,
+            completedPickups: mockUser.completedPickups
+          };
+        }
+      }
+    }
+
+    if (!userFound) {
+      return res.status(404).json({ success: false, message: 'No account found with this email' });
+    }
+
+    if (!codeValid) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification code' });
+    }
+
+    const token = generateToken(verifiedUserObj);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Email address verified successfully',
+      token,
+      user: verifiedUserObj
+    });
+
+  } catch (error: any) {
+    console.error('Verify OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Server error during OTP verification', error: error.message });
+  }
+};
+
+export const resendOtp = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Please provide email address' });
+  }
+
+  try {
+    const isDb = getDbStatus();
+    let userFound = false;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
+    if (isDb) {
+      const dbUser = await User.findOneAndUpdate(
+        { email },
+        { verificationCode: otp, verificationExpires: expires }
+      );
+      if (dbUser) userFound = true;
+    } else {
+      const mockUserIndex = mockUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+      if (mockUserIndex !== -1) {
+        mockUsers[mockUserIndex].verificationCode = otp;
+        mockUsers[mockUserIndex].verificationExpires = expires;
+        userFound = true;
+      }
+    }
+
+    if (!userFound) {
+      return res.status(404).json({ success: false, message: 'No account found with this email' });
+    }
+
+    console.info(`[FoodShare Auth] Verification code resent for: ${email}. Code generated: ${otp}`);
+
+    // Send verification email via Nodemailer
+    await sendVerificationEmail(email, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Verification code resent successfully.'
+    });
+
+  } catch (error: any) {
+    console.error('Resend OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Server error during OTP resend', error: error.message });
   }
 };

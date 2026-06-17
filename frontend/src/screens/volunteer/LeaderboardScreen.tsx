@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, Trophy, Award, Flame } from 'lucide-react';
+import { ArrowLeft, Trophy, Award, Flame } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';

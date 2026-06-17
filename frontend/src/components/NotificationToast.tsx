@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Bell, X } from 'lucide-react';
+import { Bell, X } from 'lucide-react-native';
 import { AppTheme } from '../theme/theme';
 
 interface NotificationToastProps {

@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   BarChart, Users, Clipboard, LogOut, Sun, Moon, Search, FileText,
   CheckCircle, RefreshCw, Edit, Trash2, Eye, Download, Printer, Filter, X
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { AdminService } from '../../services/adminService';

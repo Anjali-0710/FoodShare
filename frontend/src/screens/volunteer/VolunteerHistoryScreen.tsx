@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput,
 } from 'react-native';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, Search, Calendar, CheckCircle, Percent, Clock, Inbox } from 'lucide-react';
+import { ArrowLeft, Search, Calendar, CheckCircle, Percent, Clock, Inbox } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';

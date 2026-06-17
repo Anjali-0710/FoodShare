@@ -8,7 +8,7 @@ import {
   ArrowLeft, Phone, MapPin, User, Package, Calendar,
   Clock3, CheckCircle2, Truck, Star, XCircle, AlertCircle,
   Thermometer, Info,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateDonationInList } from '../../store/ngoSlice';
 import { apiCall } from '../../services/api';

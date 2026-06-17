@@ -17,6 +17,9 @@
     "android": {
       "package": "com.foodshareai.app"
     },
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
     "web": {
       "bundler": "metro"
     },

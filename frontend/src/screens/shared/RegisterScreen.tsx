@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { User, Mail, Lock, Phone, MapPin, Award, ArrowLeft } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, Award, ArrowLeft } from 'lucide-react-native';
 import { setCredentials } from '../../store/authSlice';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';
@@ -9,9 +9,11 @@ import { AppTheme } from '../../theme/theme';
 interface RegisterScreenProps {
   theme: AppTheme;
   navigate: (screen: string) => void;
+  setOtpEmail?: (email: string) => void;
+  setOtpDemoCode?: (code: string) => void;
 }
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate }) => {
+export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate, setOtpEmail, setOtpDemoCode }) => {
   const dispatch = useDispatch();
 
   const [name, setName] = useState('');
@@ -87,8 +89,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate 
       });
 
       if (response.success) {
-        dispatch(setCredentials({ user: response.user, token: response.token }));
-        navigate('Dashboard');
+        if (setOtpEmail) setOtpEmail(email);
+        if (setOtpDemoCode && response.code) setOtpDemoCode(response.code);
+        navigate('OTP');
       } else {
         setError(response.message || 'Registration failed. Please try again.');
       }

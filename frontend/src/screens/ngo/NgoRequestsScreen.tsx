@@ -7,7 +7,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   ArrowLeft, RefreshCw, Search, X, Clock3, CheckCircle2,
   Truck, Package, Star, ShieldAlert,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setMyDonations, setActiveDonation } from '../../store/ngoSlice';
 import { apiCall } from '../../services/api';

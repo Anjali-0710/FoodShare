@@ -29,6 +29,8 @@ const AppContent: React.FC = () => {
   const [screen, setScreen] = useState('Login');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpDemoCode, setOtpDemoCode] = useState('');
 
   // Selected Theme Choice
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
@@ -162,6 +164,10 @@ const AppContent: React.FC = () => {
           theme={theme} 
           currentScreen={screen} 
           setScreen={setScreen} 
+          otpEmail={otpEmail}
+          setOtpEmail={setOtpEmail}
+          otpDemoCode={otpDemoCode}
+          setOtpDemoCode={setOtpDemoCode}
         />
       </View>
     </SafeAreaView>

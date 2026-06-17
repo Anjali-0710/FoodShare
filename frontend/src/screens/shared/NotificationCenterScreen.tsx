@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   ArrowLeft, Bell, CheckCheck, Trash2, MailOpen, Mail, ShieldAlert,
   Calendar, Info, AlertTriangle, Truck, Award, CheckCircle, Package, Navigation
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import {
   setNotifications, markReadLocal, markAllReadLocal, deleteLocal, setLoading, setError

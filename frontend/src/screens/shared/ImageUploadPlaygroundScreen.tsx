@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, Camera, Image as ImageIcon, Trash2, CheckCircle, AlertTriangle, ShieldAlert, Sparkles, Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Trash2, CheckCircle, AlertTriangle, ShieldAlert, Sparkles, Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { AppTheme } from '../../theme/theme';
 import UploadService from '../../services/uploadService';

@@ -31,7 +31,10 @@ export const apiCall = async (endpoint: string, options: RequestOptions = {}) =>
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      const err = new Error(data.message || 'Something went wrong');
+      (err as any).status = response.status;
+      (err as any).data = data;
+      throw err;
     }
     
     return data;

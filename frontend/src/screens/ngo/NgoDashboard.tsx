@@ -5,7 +5,7 @@ import {
   Search, History, LogOut, RefreshCw, Sun, Moon,
   ArrowRight, Bell, UserCircle, List, CheckCircle2,
   TrendingUp, Package, Clock3, Truck
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { setMyDonations, setActiveDonation } from '../../store/ngoSlice';

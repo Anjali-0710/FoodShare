@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ArrowLeft, Calendar, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, CheckCircle2, XCircle } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setActiveItem } from '../../store/donationSlice';
 import { apiCall } from '../../services/api';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ArrowLeft, PlusCircle, BrainCircuit, Users, Thermometer, CalendarClock, PhoneCall } from 'lucide-react';
+import { ArrowLeft, PlusCircle, BrainCircuit, Users, Thermometer, CalendarClock, PhoneCall } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { addDonation } from '../../store/donationSlice';
 import { apiCall } from '../../services/api';

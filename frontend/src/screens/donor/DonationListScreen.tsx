@@ -24,7 +24,7 @@ import {
   CheckCircle2,
   XCircle,
   Package,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setDonations, setActiveItem } from '../../store/donationSlice';
 import { apiCall } from '../../services/api';

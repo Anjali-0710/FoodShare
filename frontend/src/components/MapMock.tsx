@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import { MapPin, Navigation, Car, ShieldAlert } from 'lucide-react';
+import { MapPin, Navigation, Car, ShieldAlert } from 'lucide-react-native';
 import { AppTheme } from '../theme/theme';
 
 interface MapMockProps {

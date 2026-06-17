@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { Mail, Lock, LogIn, Eye, EyeOff, Sun, Moon, Leaf } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff, Sun, Moon, Leaf } from 'lucide-react-native';
 import { setCredentials, toggleTheme } from '../../store/authSlice';
 import { apiCall } from '../../services/api';
 import { AppTheme } from '../../theme/theme';
@@ -9,9 +9,11 @@ import { AppTheme } from '../../theme/theme';
 interface LoginScreenProps {
   theme: AppTheme;
   navigate: (screen: string) => void;
+  setOtpEmail?: (email: string) => void;
+  setOtpDemoCode?: (code: string) => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOtpEmail, setOtpDemoCode }) => {
   const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,6 +56,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => 
         setError(response.message || 'Login failed. Please check your credentials and try again.');
       }
     } catch (err: any) {
+      if (err.status === 403 && err.data?.isVerified === false) {
+        if (setOtpEmail) setOtpEmail(err.data.email || email.trim().toLowerCase());
+        if (setOtpDemoCode && err.data.code) setOtpDemoCode(err.data.code);
+        navigate('OTP');
+        return;
+      }
       const msg = (err.message || '').toLowerCase();
       if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password')) {
         setError('Incorrect email or password. Please try again.');

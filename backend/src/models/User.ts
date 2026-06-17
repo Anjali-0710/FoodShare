@@ -17,6 +17,9 @@ export interface IUser extends Document {
   completedPickups: number; // Only for Volunteer
   resetPasswordCode?: string;
   resetPasswordExpires?: Date;
+  isVerified: boolean;
+  verificationCode?: string;
+  verificationExpires?: Date;
   isActive?: boolean;
   createdAt: Date;
 }
@@ -38,6 +41,9 @@ const UserSchema = new Schema<IUser>({
   completedPickups: { type: Number, default: 0 },
   resetPasswordCode: { type: String },
   resetPasswordExpires: { type: Date },
+  isVerified: { type: Boolean, default: false },
+  verificationCode: { type: String },
+  verificationExpires: { type: Date },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });

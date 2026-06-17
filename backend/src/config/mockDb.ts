@@ -15,6 +15,9 @@ export interface MockUser {
   completedPickups: number;
   resetPasswordCode?: string;
   resetPasswordExpires?: Date;
+  isVerified?: boolean;
+  verificationCode?: string;
+  verificationExpires?: Date;
   isActive?: boolean;
   createdAt: Date;
 }
@@ -152,7 +155,7 @@ export const seedMockDatabase = async () => {
     }
   );
 
-  mockUsers.forEach(u => { u.isActive = true; });
+  mockUsers.forEach(u => { u.isActive = true; u.isVerified = true; });
 
   // Seed Historical & Active Donations (For rich chart visualizations)
   const now = Date.now();

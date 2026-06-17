@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { PlusCircle, History, LogOut, RefreshCw, Sun, Moon, ArrowRight, ShieldAlert, List, UserCircle, MapPin, Camera } from 'lucide-react';
+import { PlusCircle, History, LogOut, RefreshCw, Sun, Moon, ArrowRight, ShieldAlert, List, UserCircle, MapPin, Camera } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { apiCall } from '../../services/api';

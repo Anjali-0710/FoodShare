@@ -46,10 +46,19 @@ app.use('/api/location', locationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 
-// Wildcard Page-Not-Found Handler
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Resource path not found' });
+// Serve static frontend assets (Expo Web Build)
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+// SPA Fallback routing (for non-API paths)
+app.get('*', (req, res) => {
+  // Return JSON 404 for unmatched API routes
+  if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+    return res.status(404).json({ success: false, message: 'Resource path not found' });
+  }
+  res.sendFile(path.resolve(frontendDistPath, 'index.html'));
 });
+
 
 // Startup Orchestrator
 const startServer = async () => {

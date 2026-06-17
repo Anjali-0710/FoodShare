@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, MapPin, Navigation, Milestone, Clock, CheckCircle, AlertTriangle, ShieldAlert, Sliders, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Milestone, Clock, CheckCircle, AlertTriangle, ShieldAlert, Sliders, RefreshCw } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { AppTheme } from '../../theme/theme';
 import LocationService from '../../services/locationService';
