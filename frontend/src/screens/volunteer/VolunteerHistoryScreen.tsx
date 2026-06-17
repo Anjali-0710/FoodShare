@@ -5,7 +5,7 @@ import {
 import { useSelector } from 'react-redux';
 import { ArrowLeft, Search, Calendar, CheckCircle, Percent, Clock, Inbox } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface VolunteerHistoryScreenProps {
@@ -17,7 +17,7 @@ export const VolunteerHistoryScreen: React.FC<VolunteerHistoryScreenProps> = ({
   theme,
   navigate,
 }) => {
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [filteredDeliveries, setFilteredDeliveries] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,40 +35,38 @@ export const VolunteerHistoryScreen: React.FC<VolunteerHistoryScreenProps> = ({
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const response = await apiCall('/donations?mine=true', { token });
-      if (response.success) {
-        const items = response.donations;
-        setDeliveries(items);
-        setFilteredDeliveries(items.filter((d: any) => d.status === 'Completed'));
+      const items = user?.id
+        ? await DonationService.getVolunteerPickups(user.id)
+        : [];
+      setDeliveries(items);
+      setFilteredDeliveries(items.filter((d: any) => d.status === 'Completed'));
 
-        // Calculate Stats
-        const completed = items.filter((d: any) => d.status === 'Completed');
-        const active = items.filter((d: any) => ['Assigned', 'Picked Up', 'Delivered'].includes(d.status));
-        const cancelled = items.filter((d: any) => d.status === 'Cancelled');
-        
-        // Monthly calculation
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const monthly = completed.filter((d: any) => {
-          const date = new Date(d.createdAt || d.bestBeforeDate);
-          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-        });
+      // Calculate Stats
+      const completed = items.filter((d: any) => d.status === 'Completed');
+      const active = items.filter((d: any) => ['Assigned', 'Picked Up', 'Delivered'].includes(d.status));
+      const cancelled = items.filter((d: any) => d.status === 'Cancelled');
+      
+      // Monthly calculation
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const monthly = completed.filter((d: any) => {
+        const date = new Date(d.createdAt || d.bestBeforeDate);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      });
 
-        // Success rate calculation
-        const totalClosed = completed.length + cancelled.length;
-        const successRate = totalClosed > 0 ? Math.round((completed.length / totalClosed) * 100) : 100;
+      // Success rate calculation
+      const totalClosed = completed.length + cancelled.length;
+      const successRate = totalClosed > 0 ? Math.round((completed.length / totalClosed) * 100) : 100;
 
-        setStats({
-          completed: completed.length,
-          active: active.length,
-          monthly: monthly.length,
-          successRate,
-        });
-      }
+      setStats({
+        completed: completed.length,
+        active: active.length,
+        monthly: monthly.length,
+        successRate,
+      });
     } catch (error) {
       console.error('Fetch volunteer history error:', error);
-      // Backend offline — use dummy baseline calculations based on profile CompletedPickups
       const completedCount = user?.completedPickups || 0;
       setStats({
         completed: completedCount,

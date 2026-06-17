@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useSelector } from 'react-redux';
 import { ArrowLeft, Clock, ShieldCheck, MapPin, PhoneCall, QrCode } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 import MapMock from '../../components/MapMock';
 
@@ -29,25 +29,21 @@ const MOCK_ACTIVE_DONATION = {
 
 
 export const TrackDonationScreen: React.FC<TrackDonationScreenProps> = ({ theme, navigate }) => {
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   
   const [donation, setDonation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const loadActiveDonation = async () => {
     try {
-      const response = await apiCall('/donations?mine=true', { token });
-      if (response.success) {
-        const active = response.donations.find((d: any) =>
-          ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
-        );
-        if (active) {
-          const details = await apiCall(`/donations/${active._id || active.id}`, { token });
-          if (details.success) setDonation(details.donation);
-        }
-      }
+      const donations = user?.id
+        ? await DonationService.getDonations({ donorId: user.id })
+        : [];
+      const active = donations.find((d: any) =>
+        ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
+      );
+      setDonation(active || MOCK_ACTIVE_DONATION);
     } catch (error) {
-      // Backend offline — show demo active donation
       setDonation(MOCK_ACTIVE_DONATION);
     } finally {
       setLoading(false);

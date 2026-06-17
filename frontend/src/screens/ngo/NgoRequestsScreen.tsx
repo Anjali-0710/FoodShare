@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setMyDonations, setActiveDonation } from '../../store/ngoSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface NgoRequestsScreenProps {
@@ -70,7 +70,7 @@ const formatDate = (dateStr: string) => {
 
 export const NgoRequestsScreen: React.FC<NgoRequestsScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const myDonations = useSelector((state: RootState) => state.ngo.myDonations);
 
   const [loading, setLoading] = useState(myDonations.length === 0);
@@ -82,19 +82,15 @@ export const NgoRequestsScreen: React.FC<NgoRequestsScreenProps> = ({ theme, nav
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const res = await apiCall('/donations?mine=true', { token });
-      if (res.success) {
-        dispatch(setMyDonations(res.donations));
-      } else {
-        dispatch(setMyDonations(MOCK_MY_DONATIONS));
-      }
+      const data = user?.id ? await DonationService.getNgoDonations(user.id) : [];
+      dispatch(setMyDonations(data.length > 0 ? data : MOCK_MY_DONATIONS));
     } catch {
       if (myDonations.length === 0) dispatch(setMyDonations(MOCK_MY_DONATIONS));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, myDonations.length]);
+  }, [user?.id, myDonations.length]);
 
   useEffect(() => {
     fetchMyDonations();

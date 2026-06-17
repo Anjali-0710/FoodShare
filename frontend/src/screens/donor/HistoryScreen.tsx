@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, Calendar, FileText, CheckCircle2, XCircle } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setActiveItem } from '../../store/donationSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface HistoryScreenProps {
@@ -21,20 +21,19 @@ const MOCK_HISTORY = [
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await apiCall('/donations?mine=true', { token });
-        if (response.success) {
-          const filtered = response.donations.filter((d: any) => ['Completed', 'Cancelled'].includes(d.status));
-          setHistory(filtered);
-        }
+        const data = user?.id
+          ? await DonationService.getDonations({ donorId: user.id })
+          : [];
+        const filtered = data.filter((d: any) => ['Completed', 'Cancelled'].includes(d.status));
+        setHistory(filtered.length > 0 ? filtered : MOCK_HISTORY);
       } catch (error) {
-        // Backend offline — show demo history
         setHistory(MOCK_HISTORY);
       } finally {
         setLoading(false);

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateDonationInList } from '../../store/donationSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface DonationDetailScreenProps {
@@ -72,7 +72,7 @@ const MOCK_DETAIL: any = {
 
 export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const activeItem = useSelector((state: RootState) => state.donation.activeItem);
 
   const [donation, setDonation] = useState<any>(activeItem || MOCK_DETAIL);
@@ -84,12 +84,11 @@ export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ them
     if (!activeItem) return;
     try {
       const id = activeItem.id || (activeItem as any)._id;
-      const res = await apiCall(`/donations/${id}`, { token });
-      if (res.success) {
-        setDonation(res.donation);
-      }
+      const data = await DonationService.getDonations();
+      const found = data.find((d: any) => d.id === id);
+      if (found) setDonation(found);
+      else setDonation({ ...MOCK_DETAIL, ...activeItem });
     } catch {
-      // Use activeItem as fallback
       setDonation({ ...MOCK_DETAIL, ...activeItem });
     } finally {
       setLoading(false);
@@ -109,18 +108,10 @@ export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ them
     setError(null);
     try {
       const id = donation.id || donation._id;
-      const res = await apiCall(`/donations/${id}/status`, {
-        method: 'PUT',
-        body: { status: 'Cancelled' },
-        token,
-      });
-      if (res.success) {
-        const updated = { ...donation, status: 'Cancelled' };
-        setDonation(updated);
-        dispatch(updateDonationInList(updated));
-      } else {
-        setError(res.message || 'Failed to cancel donation.');
-      }
+      await DonationService.updateStatus(id, 'Cancelled');
+      const updated = { ...donation, status: 'Cancelled' };
+      setDonation(updated);
+      dispatch(updateDonationInList(updated));
     } catch {
       // Optimistic update for offline mode
       const updated = { ...donation, status: 'Cancelled' };

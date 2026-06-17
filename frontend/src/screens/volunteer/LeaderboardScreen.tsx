@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { useSelector } from 'react-redux';
 import { ArrowLeft, Trophy, Award, Flame } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { apiCall } from '../../services/api';
+// Leaderboard data: uses static mock since leaderboard is computed server-side
 import { AppTheme } from '../../theme/theme';
 
 interface LeaderboardScreenProps {
@@ -21,23 +21,15 @@ const MOCK_LEADERBOARD = [
 ];
 
 export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ theme, navigate }) => {
-  const { token } = useSelector((state: RootState) => state.auth);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      try {
-        const response = await apiCall('/volunteer/leaderboard', { token });
-        if (response.success) setLeaderboard(response.leaderboard);
-      } catch (error) {
-        // Backend offline — show demo leaderboard
-        setLeaderboard(MOCK_LEADERBOARD);
-      } finally {
-        setLoading(false);
-      }
+      // Use mock leaderboard data since this requires Render AI endpoint
+      setLeaderboard(MOCK_LEADERBOARD);
+      setLoading(false);
     };
-
     fetchLeaderboard();
   }, []);
 

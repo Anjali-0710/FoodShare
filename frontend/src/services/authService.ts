@@ -222,13 +222,16 @@ export class AuthService {
   }
 
   /**
-   * Update user profile
+   * Update user profile (auto-detects user ID from current session)
    */
-  static async updateProfile(userId: string, data: {
+  static async updateProfile(data: {
     name?: string;
     contactNumber?: string;
     address?: string;
   }) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -236,7 +239,7 @@ export class AuthService {
         contact_number: data.contactNumber,
         address: data.address,
       })
-      .eq('id', userId);
+      .eq('id', session.user.id);
 
     if (error) {
       throw new Error(error.message);

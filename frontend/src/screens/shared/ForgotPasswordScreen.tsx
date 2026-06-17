@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { Mail, ArrowLeft, CheckCircle2, Lock, KeyRound } from 'lucide-react-native';
-import { apiCall } from '../../services/api';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
 interface ForgotPasswordScreenProps {
@@ -35,17 +35,9 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
     setStatus(null);
 
     try {
-      const response = await apiCall('/auth/forgot-password', {
-        method: 'POST',
-        body: { email: email.trim().toLowerCase() }
-      });
-      
-      if (response.success) {
-        setStep(2);
-        setStatus('A verification code has been sent to your email address.');
-      } else {
-        setError(response.message || 'Failed to send verification code.');
-      }
+      await AuthService.forgotPassword(email.trim().toLowerCase());
+      setStep(2);
+      setStatus('A password reset link has been sent to your email address. Follow the link to reset your password.');
     } catch (err: any) {
       console.error('Request code error:', err);
       setError(err.message || 'No account associated with this email.');
@@ -76,28 +68,16 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ them
     setError(null);
 
     try {
-      const response = await apiCall('/auth/reset-password', {
-        method: 'POST',
-        body: { 
-          email: email.trim().toLowerCase(), 
-          code: code.trim(), 
-          newPassword 
-        }
-      });
-
-      if (response.success) {
-        setStatus('Your password has been reset successfully! You can now sign in with your new credentials.');
-        setStep(1); // Return to default success state
-        setEmail('');
-        setCode('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        setError(response.message || 'Failed to reset password.');
-      }
+      await AuthService.resetPassword(newPassword);
+      setStatus('Your password has been reset successfully! You can now sign in with your new credentials.');
+      setStep(1);
+      setEmail('');
+      setCode('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
       console.error('Reset password error:', err);
-      setError(err.message || 'Invalid or expired code. Please try again.');
+      setError(err.message || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
     }

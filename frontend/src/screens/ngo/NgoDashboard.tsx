@@ -9,7 +9,7 @@ import {
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { setMyDonations, setActiveDonation } from '../../store/ngoSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface NgoDashboardProps {
@@ -63,16 +63,13 @@ export const NgoDashboard: React.FC<NgoDashboardProps> = ({ theme, navigate }) =
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await apiCall('/donations?mine=true', { token });
-      if (response.success) {
-        const all = response.donations;
-        setAllDonations(all);
-        const active = all.filter((d: any) =>
-          ['Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
-        );
-        setClaimedDonations(active);
-        dispatch(setMyDonations(all));
-      }
+      const all = user?.id ? await DonationService.getNgoDonations(user.id) : [];
+      setAllDonations(all);
+      const active = all.filter((d: any) =>
+        ['Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
+      );
+      setClaimedDonations(active);
+      dispatch(setMyDonations(all));
     } catch {
       setClaimedDonations(MOCK_CLAIMED);
       setAllDonations(MOCK_CLAIMED);

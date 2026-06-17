@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setActiveDonation, addNotification } from '../../store/ngoSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface BrowseDonationsScreenProps {
@@ -52,7 +52,7 @@ const formatExpiry = (dateStr: string) => {
 
 export const BrowseDonationsScreen: React.FC<BrowseDonationsScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const [donations, setDonations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,15 +78,14 @@ export const BrowseDonationsScreen: React.FC<BrowseDonationsScreenProps> = ({ th
   const fetchAvailableDonations = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiCall('/donations?status=Pending', { token });
-      if (response.success) setDonations(response.donations);
-      else setDonations(MOCK_BROWSE);
+      const data = await DonationService.getAvailableDonations();
+      setDonations(data.length > 0 ? data : MOCK_BROWSE);
     } catch {
       setDonations(MOCK_BROWSE);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchAvailableDonations();
@@ -106,13 +105,11 @@ export const BrowseDonationsScreen: React.FC<BrowseDonationsScreenProps> = ({ th
     setModalVisible(false);
     setActionLoadingId(id);
     try {
-      const response = await apiCall(`/donations/${id}/accept`, { method: 'PUT', token, body: { notes: ngoNotes } });
-      if (response.success) {
-        setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
-      } else {
-        // Optimistic removal for offline mode
-        setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
-      }
+      await DonationService.updateStatus(id, 'Accepted', {
+        ngoId: user?.id,
+        ngoName: user?.name,
+      });
+      setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
       dispatch(addNotification({
         id: `notif_accept_${id}`,
         type: 'accepted',
@@ -135,7 +132,8 @@ export const BrowseDonationsScreen: React.FC<BrowseDonationsScreenProps> = ({ th
     setModalVisible(false);
     setActionLoadingId(id);
     try {
-      await apiCall(`/donations/${id}/reject`, { method: 'PUT', token, body: { reason: rejectReason } });
+      await DonationService.updateStatus(id, 'Cancelled');
+      setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
     } catch {
       // silent fail
     } finally {

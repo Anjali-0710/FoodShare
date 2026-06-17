@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { setDonations, setActiveItem } from '../../store/donationSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface DonationListScreenProps {
@@ -95,7 +95,7 @@ const getFreshnessColor = (score: number, theme: AppTheme) => {
 
 export const DonationListScreen: React.FC<DonationListScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const donations = useSelector((state: RootState) => state.donation.items);
 
   const [loading, setLoading] = useState(true);
@@ -110,17 +110,17 @@ export const DonationListScreen: React.FC<DonationListScreenProps> = ({ theme, n
     else setLoading(true);
 
     try {
-      const response = await apiCall('/donations?mine=true', { token });
-      if (response.success) {
-        dispatch(setDonations(response.donations));
-      }
+      const data = user?.id
+        ? await DonationService.getDonations({ donorId: user.id })
+        : [];
+      dispatch(setDonations(data as any));
     } catch {
       dispatch(setDonations(MOCK_LIST as any));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchDonations();

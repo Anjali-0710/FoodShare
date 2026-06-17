@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, PlusCircle, BrainCircuit, Users, Thermometer, CalendarClock, PhoneCall } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { addDonation } from '../../store/donationSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 import { predictFreshness } from '../../services/aiService';
 
@@ -15,7 +15,7 @@ interface CreateDonationScreenProps {
 
 export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   // Form Fields
   const [foodType, setFoodType] = useState<'Cooked Food' | 'Vegetables' | 'Fruits' | 'Bakery Items' | 'Beverages' | 'Grocery Items'>('Cooked Food');
@@ -82,31 +82,9 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
     setFreshnessPreview(score);
   }, [foodType, bestBeforeHours, prepHoursAgo, temperature]);
 
-  // Load NGO recommendations immediately for visual selection
+  // Removed NGO recommendation (requires Render AI endpoint). Can be re-added later.
   useEffect(() => {
-    const loadNgoMatches = async () => {
-      try {
-        const coords = user?.gpsLocation || { latitude: 28.6139, longitude: 77.2090 };
-        const response = await apiCall('/ai/recommend-ngos', {
-          method: 'POST',
-          body: {
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            foodType,
-            quantity: Number(quantity) || 10
-          },
-          token
-        });
-
-        if (response.success) {
-          setMatchedNgos(response.recommendations.slice(0, 2)); // Show top 2 matching NGOs
-        }
-      } catch (err) {
-        console.error('Ngo matchmaking failed:', err);
-      }
-    };
-
-    if (token) loadNgoMatches();
+    setMatchedNgos([]);
   }, [foodType, quantity]);
 
   const handleSubmit = async () => {
@@ -146,29 +124,25 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
     const longitude = user?.gpsLocation?.longitude || 77.2090 + (Math.random() - 0.5) * 0.02;
 
     try {
-      const response = await apiCall('/donations', {
-        method: 'POST',
-        body: {
-          foodType,
-          quantity: Number(quantity),
-          unit,
-          bestBeforeDate,
-          preparationTime,
-          temperature: Number(temperature),
-          pickupAddress,
-          latitude,
-          longitude,
-          contactNumber,
-          additionalNotes: notes,
-          imageUrls: imageUrl ? [imageUrl] : []
-        },
-        token
+      const donation = await DonationService.createDonation({
+        foodType,
+        quantity: Number(quantity),
+        unit,
+        bestBeforeDate: bestBeforeDate.toISOString(),
+        preparationTime: preparationTime.toISOString(),
+        temperature: Number(temperature),
+        donorId: user?.id || '',
+        donorName: user?.name || '',
+        pickupAddress,
+        latitude,
+        longitude,
+        contactNumber,
+        additionalNotes: notes,
+        imageUrls: imageUrl ? [imageUrl] : [],
+        freshnessScore: freshnessPreview,
       });
-
-      if (response.success) {
-        dispatch(addDonation(response.donation));
-        navigate('Dashboard');
-      }
+      dispatch(addDonation(donation as any));
+      navigate('Dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to list food donation.');
     } finally {

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme, updateProfile } from '../../store/authSlice';
-import { apiCall } from '../../services/api';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
 interface ProfileScreenProps {
@@ -42,7 +42,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string; emoji: string 
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,19 +67,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ theme, navigate })
     setSuccess(false);
 
     try {
-      const res = await apiCall('/auth/profile', {
-        method: 'PUT',
-        body: { name: name.trim(), contactNumber, address },
-        token,
-      });
-      if (res.success) {
-        dispatch(updateProfile({ name: name.trim(), contactNumber, address }));
-        setSuccess(true);
-        setEditMode(false);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        setError(res.message || 'Failed to update profile.');
-      }
+      await AuthService.updateProfile({ name: name.trim(), contactNumber, address });
+      dispatch(updateProfile({ name: name.trim(), contactNumber, address }));
+      setSuccess(true);
+      setEditMode(false);
+      setTimeout(() => setSuccess(false), 3000);
     } catch {
       // Offline: optimistic success
       dispatch(updateProfile({ name: name.trim(), contactNumber, address }));

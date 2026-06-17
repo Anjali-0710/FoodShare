@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateDonationInList } from '../../store/ngoSlice';
-import { apiCall } from '../../services/api';
+import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
 interface NgoDonationDetailScreenProps {
@@ -69,7 +69,6 @@ const getStepIndex = (status: string) => {
 
 export const NgoDonationDetailScreen: React.FC<NgoDonationDetailScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state: RootState) => state.auth);
   const activeDonation = useSelector((state: RootState) => state.ngo.activeDonation);
 
   const [loading, setLoading] = useState(false);
@@ -109,7 +108,7 @@ export const NgoDonationDetailScreen: React.FC<NgoDonationDetailScreenProps> = (
     setLoading(true);
     try {
       const id = donation._id || donation.id;
-      await apiCall(`/donations/${id}/status`, { method: 'PUT', token, body: { status: 'Completed' } });
+      await DonationService.updateStatus(id, 'Completed');
       const updated = { ...donation, status: 'Completed' };
       dispatch(updateDonationInList(updated));
       setActionDone(true);
