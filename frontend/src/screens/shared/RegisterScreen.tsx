@@ -85,8 +85,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
       });
 
       if (response.success) {
-        if (setOtpEmail) setOtpEmail(email);
-        navigate('OTP');
+        try {
+          const loginResponse = await AuthService.login(email, password);
+          if (loginResponse.success && loginResponse.token && loginResponse.user) {
+            dispatch(setCredentials({ user: loginResponse.user, token: loginResponse.token }));
+            navigate('Dashboard');
+            return;
+          }
+        } catch (loginErr) {
+          console.error('Auto login after registration failed:', loginErr);
+        }
+        navigate('Login');
       } else {
         setError(response.message || 'Registration failed. Please try again.');
       }
