@@ -11,7 +11,6 @@ import { ROLE_SCREENS, checkRouteAccess } from './guards';
 import LoginScreen from '../screens/shared/LoginScreen';
 import RegisterScreen from '../screens/shared/RegisterScreen';
 import ForgotPasswordScreen from '../screens/shared/ForgotPasswordScreen';
-import OTPScreen from '../screens/shared/OTPScreen';
 
 import DonorDashboard from '../screens/donor/DonorDashboard';
 import CreateDonationScreen from '../screens/donor/CreateDonationScreen';
@@ -109,7 +108,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
 
   if (!access.allowed) {
     if (access.redirectScreen === 'Login') {
-      if (currentScreen !== 'Login' && currentScreen !== 'Register' && currentScreen !== 'ForgotPassword' && currentScreen !== 'OTP') {
+      if (currentScreen !== 'Login' && currentScreen !== 'Register' && currentScreen !== 'ForgotPassword') {
         setTimeout(() => setScreen('Login'), 0);
       }
       switch (currentScreen) {
@@ -117,8 +116,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
           return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
         case 'ForgotPassword':
           return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
-        case 'OTP':
-          return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
         case 'Login':
         default:
           return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
@@ -142,8 +139,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
       case 'ForgotPassword':
         return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
-      case 'OTP':
-        return <OTPScreen theme={theme} navigate={setScreen} email={otpEmail || ''} />;
       case 'Login':
       default:
         return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;

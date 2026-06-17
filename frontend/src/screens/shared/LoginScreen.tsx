@@ -49,20 +49,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOt
       if (response.success && response.token && response.user) {
         dispatch(setCredentials({ user: response.user, token: response.token, rememberMe }));
         navigate('Dashboard');
-      } else if (response.isVerified === false) {
-        if (setOtpEmail) setOtpEmail(response.email || email.trim().toLowerCase());
-        navigate('OTP');
-        return;
       } else {
         setError(response.message || 'Login failed. Please check your credentials and try again.');
       }
     } catch (err: any) {
       const msg = (err.message || '').toLowerCase();
-      if (msg.includes('email not confirmed') || msg.includes('not verified')) {
-        if (setOtpEmail) setOtpEmail(email.trim().toLowerCase());
-        navigate('OTP');
-        return;
-      }
       if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password') || msg.includes('credentials')) {
         setError('Incorrect email or password. Please try again.');
       } else if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect') || msg.includes('failed')) {
