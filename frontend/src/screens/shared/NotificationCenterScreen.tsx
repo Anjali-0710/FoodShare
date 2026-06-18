@@ -31,12 +31,11 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchNotifications = useCallback(async (isSilent = false) => {
+    if (!user?.id) return;
     if (!isSilent) dispatch(setLoading(true));
     try {
-      const response = await NotificationService.getNotifications(token);
-      if (response.success) {
-        dispatch(setNotifications(response.notifications));
-      }
+      const response = await NotificationService.getNotifications(user.id);
+      dispatch(setNotifications(response));
     } catch (err: any) {
       dispatch(setError(err.message || 'Failed to fetch notifications'));
       console.error('Fetch notifications error:', err);
@@ -56,7 +55,7 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
 
   const handleMarkRead = async (id: string) => {
     try {
-      const response = await NotificationService.markRead(id, token);
+      const response = await NotificationService.markRead(id);
       if (response.success) {
         dispatch(markReadLocal(id));
       }
@@ -66,8 +65,9 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
   };
 
   const handleMarkAllRead = async () => {
+    if (!user?.id) return;
     try {
-      const response = await NotificationService.markAllRead(token);
+      const response = await NotificationService.markAllRead(user.id);
       if (response.success) {
         dispatch(markAllReadLocal());
       }
@@ -78,7 +78,7 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await NotificationService.deleteNotification(id, token);
+      const response = await NotificationService.deleteNotification(id);
       if (response.success) {
         dispatch(deleteLocal(id));
       }

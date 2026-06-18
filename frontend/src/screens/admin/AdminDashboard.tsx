@@ -111,9 +111,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     try {
       // 1. Fetch Analytics
       const analyticsRes = await AdminService.getAnalytics(token);
-      if (analyticsRes.success) {
-        setStats(analyticsRes.stats);
-        setCharts(analyticsRes.charts);
+      if (analyticsRes.success && analyticsRes.analytics) {
+        // Map analytics to stats
+        setStats(analyticsRes.analytics);
+        
+        // Build basic charts structure from analytics
+        setCharts({
+          categories: Object.keys(analyticsRes.analytics.foodTypeBreakdown).map(k => ({
+            category: k,
+            count: analyticsRes.analytics.foodTypeBreakdown[k]
+          })),
+          ngoPerformance: [],
+          monthlyTrends: []
+        });
       }
 
       // 2. Fetch Users
@@ -137,7 +147,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       // 5. Fetch Reports Data
       const reportsRes = await AdminService.getReports(token);
       if (reportsRes.success) {
-        setReportsData(reportsRes.reports);
+        // In real app, this would be a separate endpoint, here we fallback to mock
+        setReportsData({
+          donations: donationsRes.success ? donationsRes.donations : [],
+          users: usersRes.success ? usersRes.users : [],
+          ngos: usersRes.success ? usersRes.users.filter(u => u.role === 'ngo') : [],
+          volunteers: usersRes.success ? usersRes.users.filter(u => u.role === 'volunteer') : []
+        });
       }
     } catch (err) {
       console.warn('Backend server offline or access error. Running with seeded dashboard metrics.', err);

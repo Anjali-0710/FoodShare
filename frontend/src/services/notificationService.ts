@@ -13,14 +13,15 @@ export class NotificationService {
       .limit(50);
 
     if (error) throw new Error(error.message);
-    return (data ?? []).map(row => ({
-      id: row.id,
+    return (data ?? []).map((row: any) => ({
+      _id: row.id,
       userId: row.user_id,
+      role: 'donor' as const, // Fallback, real role would need a join if strictly required
       title: row.title ?? '',
       message: row.message ?? '',
       type: row.type ?? 'info',
-      isRead: row.is_read,
-      relatedDonationId: row.related_donation_id ?? undefined,
+      read: row.is_read,
+      donationId: row.related_donation_id ?? undefined,
       createdAt: row.created_at,
     }));
   }
@@ -105,13 +106,14 @@ export class NotificationService {
         (payload) => {
           const row = payload.new;
           onNew({
-            id: row.id,
+            _id: row.id,
             userId: row.user_id,
+            role: 'donor' as const,
             title: row.title ?? '',
             message: row.message ?? '',
             type: row.type ?? 'info',
-            isRead: row.is_read,
-            relatedDonationId: row.related_donation_id ?? undefined,
+            read: row.is_read,
+            donationId: row.related_donation_id ?? undefined,
             createdAt: row.created_at,
           });
         }

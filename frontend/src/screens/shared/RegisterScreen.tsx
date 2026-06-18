@@ -1,29 +1,30 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { User, Mail, Lock, Phone, MapPin, Award, ArrowLeft } from 'lucide-react-native';
+import { User, Mail, Lock, Phone, MapPin, Award, ArrowLeft, ShieldCheck } from 'lucide-react-native';
 import { setCredentials } from '../../store/authSlice';
 import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
 
+const ADMIN_SECRET_CODE = 'FOODADMIN2025';
+
 interface RegisterScreenProps {
   theme: AppTheme;
   navigate: (screen: string) => void;
-  setOtpEmail?: (email: string) => void;
-  setOtpDemoCode?: (code: string) => void;
 }
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate, setOtpEmail, setOtpDemoCode }) => {
+export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'donor' | 'ngo' | 'volunteer' | null>(null);
+  const [role, setRole] = useState<'donor' | 'ngo' | 'volunteer' | 'admin' | null>(null);
   const [contactNumber, setContactNumber] = useState('');
   const [address, setAddress] = useState('');
-  
+  const [adminCode, setAdminCode] = useState('');
+
   // Custom states
   const [ngoCapacity, setNgoCapacity] = useState('150');
   const [preferences, setPreferences] = useState<string[]>([]);
@@ -41,7 +42,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
 
   const handleRegister = async () => {
     if (!role) {
-      setError('Please select a role (Donor, NGO, or Volunteer) to register.');
+      setError('Please select a role (Donor, NGO, Volunteer, or Admin) to register.');
+      return;
+    }
+    // Validate admin secret code
+    if (role === 'admin' && adminCode.trim() !== ADMIN_SECRET_CODE) {
+      setError('Invalid admin code. Please contact the system administrator.');
       return;
     }
     if (!name || !email || !password || !confirmPassword || !contactNumber) {
@@ -85,16 +91,22 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
       });
 
       if (response.success) {
+        // Auto-login immediately after registration — no verification required
         try {
+          // Wait for DB trigger to create the profile
+          await new Promise(resolve => setTimeout(resolve, 1500));
           const loginResponse = await AuthService.login(email, password);
           if (loginResponse.success && loginResponse.token && loginResponse.user) {
             dispatch(setCredentials({ user: loginResponse.user, token: loginResponse.token }));
             navigate('Dashboard');
             return;
           }
-        } catch (loginErr) {
+        } catch (loginErr: any) {
           console.error('Auto login after registration failed:', loginErr);
+          setError(`Auto-login failed: ${loginErr.message}. Please try logging in manually.`);
+          return; // Stop here so they don't get forced to Login without seeing the error
         }
+        // Fallback: send to login screen only if we didn't return above
         navigate('Login');
       } else {
         setError(response.message || 'Registration failed. Please try again.');
@@ -157,7 +169,39 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate,
           >
             <Text style={[styles.roleTabText, { color: role === 'volunteer' ? '#FFFFFF' : theme.colors.text }]}>Volunteer</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            id="tab-role-admin"
+            style={[styles.roleTab, role === 'admin' && { backgroundColor: '#7C3AED' }]}
+            onPress={() => setRole('admin')}
+          >
+            <Text style={[styles.roleTabText, { color: role === 'admin' ? '#FFFFFF' : theme.colors.text }]}>Admin</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Admin Secret Code Field */}
+        {role === 'admin' && (
+          <View style={[styles.adminCodeCard, { borderColor: '#7C3AED40', backgroundColor: '#7C3AED10' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <ShieldCheck size={16} color="#7C3AED" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#7C3AED' }}>Admin Verification Required</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <Lock size={18} color="#7C3AED" style={styles.inputIcon} />
+              <TextInput
+                id="input-admin-code"
+                style={[styles.input, { color: theme.colors.text, borderColor: '#7C3AED60' }]}
+                placeholder="Enter Admin Secret Code"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={adminCode}
+                onChangeText={setAdminCode}
+                secureTextEntry
+                autoComplete="off"
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+        )}
 
         {/* Name Input */}
         <View style={styles.inputContainer}>
@@ -403,6 +447,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     backgroundColor: 'rgba(128,128,128,0.05)'
+  },
+  adminCodeCard: {
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   sectionTitle: {
     fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',

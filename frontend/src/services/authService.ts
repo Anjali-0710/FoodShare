@@ -2,13 +2,14 @@ import { supabase } from './supabase';
 
 export class AuthService {
   /**
-   * Register a new user with Supabase Auth + insert profile
+   * Register a new user with Supabase Auth + insert profile.
+   * No email verification required — user is logged in immediately after signup.
    */
   static async register(userData: {
     name: string;
     email: string;
     password: string;
-    role: string;
+    role: string;  // donor | ngo | volunteer | admin
     contactNumber: string;
     address?: string;
     latitude?: number;
@@ -18,7 +19,7 @@ export class AuthService {
   }) {
     const { name, email, password, role, contactNumber, address, latitude, longitude, ngoCapacity, foodTypePreference } = userData;
 
-    // Sign up with Supabase Auth (sends verification email automatically)
+    // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
@@ -40,6 +41,18 @@ export class AuthService {
       throw new Error('Registration failed. Please try again.');
     }
 
+    // If no session was established (e.g. because Auth server configuration expects confirmation,
+    // but our DB trigger auto-confirmed the user), sign in explicitly to establish session and headers.
+    if (!authData.session) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (signInError) {
+        throw new Error(`Auth sign up succeeded, but profile initialization login failed: ${signInError.message}`);
+      }
+    }
+
     // Insert profile row
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authData.user.id,
@@ -58,20 +71,20 @@ export class AuthService {
     });
 
     if (profileError) {
-      console.error('Profile insert error:', profileError);
-      // Don't throw — auth account already created, profile can be fixed later
+      // Log it but don't throw — the database trigger (handle_new_user) 
+      // already auto-created the profile. The insert here is a safety net.
+      console.warn('Profile insert skipped (likely already created by trigger):', profileError.message);
     }
 
     return {
       success: true,
-      message: 'Registration successful! Please check your email to verify your account.',
+      message: 'Registration successful!',
       email: authData.user.email,
-      requiresVerification: !authData.session, // true if email verification required
     };
   }
 
   /**
-   * Log in user with Supabase Auth
+   * Log in user with Supabase Auth — direct login, no verification gate.
    */
   static async login(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -80,14 +93,6 @@ export class AuthService {
     });
 
     if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        return {
-          success: false,
-          message: 'Please verify your email address before logging in.',
-          isVerified: false,
-          email: email.trim().toLowerCase(),
-        };
-      }
       throw new Error(error.message);
     }
 
@@ -95,14 +100,23 @@ export class AuthService {
       throw new Error('Login failed. Please try again.');
     }
 
-    // Fetch profile to get role and additional data
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // Retry profile fetch up to 4 times — the DB trigger may take a moment after signup
+    let profile: any = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      if (profileData) {
+        profile = profileData;
+        break;
+      }
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
 
-    if (profileError || !profile) {
+    if (!profile) {
       throw new Error('User profile not found. Please contact support.');
     }
 
@@ -145,6 +159,12 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error || !session) return null;
+
+      // Reject anonymous users explicitly
+      if (session.user?.is_anonymous) {
+        await supabase.auth.signOut();
+        return null;
+      }
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -208,22 +228,6 @@ export class AuthService {
     }
 
     return { success: true, message: 'Password updated successfully.' };
-  }
-
-  /**
-   * Resend verification email
-   */
-  static async resendVerification(email: string) {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email.trim().toLowerCase(),
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return { success: true, message: 'Verification email resent. Please check your inbox.' };
   }
 
   /**

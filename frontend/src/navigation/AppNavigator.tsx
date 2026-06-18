@@ -90,16 +90,12 @@ interface AppNavigatorProps {
   theme: AppTheme;
   currentScreen: string;
   setScreen: (screen: string) => void;
-  otpEmail?: string;
-  setOtpEmail?: (email: string) => void;
 }
 
-export const AppNavigator: React.FC<AppNavigatorProps> = ({ 
-  theme, 
-  currentScreen, 
+export const AppNavigator: React.FC<AppNavigatorProps> = ({
+  theme,
+  currentScreen,
   setScreen,
-  otpEmail,
-  setOtpEmail,
 }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
@@ -113,15 +109,15 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
       }
       switch (currentScreen) {
         case 'Register':
-          return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
+          return <RegisterScreen theme={theme} navigate={setScreen} />;
         case 'ForgotPassword':
           return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
         case 'Login':
         default:
-          return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
+          return <LoginScreen theme={theme} navigate={setScreen} />;
       }
     }
-    
+
     if (access.redirectScreen === 'Dashboard') {
       setTimeout(() => setScreen('Dashboard'), 0);
       return null;
@@ -136,12 +132,12 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
   if (!isAuthenticated || !user) {
     switch (currentScreen) {
       case 'Register':
-        return <RegisterScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
+        return <RegisterScreen theme={theme} navigate={setScreen} />;
       case 'ForgotPassword':
         return <ForgotPasswordScreen theme={theme} navigate={setScreen} />;
       case 'Login':
       default:
-        return <LoginScreen theme={theme} navigate={setScreen} setOtpEmail={setOtpEmail} />;
+        return <LoginScreen theme={theme} navigate={setScreen} />;
     }
   }
 

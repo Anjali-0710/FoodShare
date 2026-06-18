@@ -145,44 +145,54 @@ export class AdminService {
    */
   static async getAnalytics(token: string | null) {
     const [usersResult, donationsResult] = await Promise.all([
-      supabase.from('profiles').select('role, created_at', { count: 'exact' }),
+      supabase.from('profiles').select('role, created_at, is_active', { count: 'exact' }),
       supabase.from('donations').select('status, food_type, quantity, unit, created_at', { count: 'exact' }),
     ]);
 
     const users = usersResult.data ?? [];
     const donations = donationsResult.data ?? [];
 
-    const totalUsers = users.length;
     const totalDonations = donations.length;
     const completedDonations = donations.filter(d => d.status === 'Completed' || d.status === 'Delivered').length;
-    const pendingDonations = donations.filter(d => d.status === 'Pending').length;
-    const totalFoodKg = donations
-      .filter(d => d.unit === 'Kg' && (d.status === 'Completed' || d.status === 'Delivered'))
-      .reduce((sum, d) => sum + (d.quantity ?? 0), 0);
+    const activeDonations = donations.filter(d => d.status === 'Pending' || d.status === 'Accepted' || d.status === 'Assigned' || d.status === 'Picked Up').length;
+    const cancelledDonations = donations.filter(d => d.status === 'Cancelled').length;
 
-    const roleBreakdown = users.reduce((acc: any, u) => {
-      acc[u.role] = (acc[u.role] ?? 0) + 1;
-      return acc;
-    }, {});
+    // Food saved in Kg — count all completed donations in Kg units + estimate plate-based
+    const foodSavedKg = donations
+      .filter(d => (d.status === 'Completed' || d.status === 'Delivered'))
+      .reduce((sum, d) => {
+        if (d.unit === 'Kg') return sum + (d.quantity ?? 0);
+        if (d.unit === 'Plates') return sum + (d.quantity ?? 0) * 0.3; // ~300g per plate
+        if (d.unit === 'Packets') return sum + (d.quantity ?? 0) * 0.5;
+        return sum + (d.quantity ?? 0);
+      }, 0);
+
+    const totalDonors = users.filter(u => u.role === 'donor').length;
+    const totalNgos = users.filter(u => u.role === 'ngo').length;
+    const totalVolunteers = users.filter(u => u.role === 'volunteer').length;
+    const activeUsers = users.filter(u => u.is_active !== false).length;
 
     const foodTypeBreakdown = donations.reduce((acc: any, d) => {
-      acc[d.food_type] = (acc[d.food_type] ?? 0) + 1;
+      if (d.food_type) acc[d.food_type] = (acc[d.food_type] ?? 0) + 1;
       return acc;
     }, {});
 
     return {
       success: true,
       analytics: {
-        totalUsers,
+        totalUsers: users.length,
+        activeUsers,
         totalDonations,
         completedDonations,
-        pendingDonations,
-        totalFoodKg,
-        roleBreakdown,
+        activeDonations,
+        cancelledDonations,
+        foodSavedKg: Math.round(foodSavedKg * 10) / 10,
+        totalBeneficiaries: completedDonations * 12, // ~12 people fed per completed donation
+        totalDonors,
+        totalNgos,
+        totalVolunteers,
         foodTypeBreakdown,
-        completionRate: totalDonations > 0
-          ? Math.round((completedDonations / totalDonations) * 100)
-          : 0,
+        completionRate: totalDonations > 0 ? Math.round((completedDonations / totalDonations) * 100) : 0,
       },
     };
   }

@@ -167,3 +167,22 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.donations;
 -- ============================================================
 -- NOTE: Run this AFTER creating an admin account via app signup
 -- UPDATE public.profiles SET role = 'admin' WHERE email = 'admin@foodshare.com';
+
+-- ============================================================
+-- AUTO-CONFIRM USERS AT DATABASE LEVEL (Bypass SMTP/OTP)
+-- Run this in your Supabase SQL Editor to make all new signups instantly verified
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.auto_confirm_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at = NOW();
+  NEW.confirmed_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER tr_auto_confirm_user
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_confirm_user();
+

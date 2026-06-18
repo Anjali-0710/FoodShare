@@ -9,11 +9,9 @@ import { AppTheme } from '../../theme/theme';
 interface LoginScreenProps {
   theme: AppTheme;
   navigate: (screen: string) => void;
-  setOtpEmail?: (email: string) => void;
-  setOtpDemoCode?: (code: string) => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOtpEmail, setOtpDemoCode }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -121,7 +119,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOt
             onChangeText={(t) => { setEmail(t); setError(null); }}
             autoCapitalize="none"
             keyboardType="email-address"
-            autoComplete="email"
+            autoComplete="off"
             onSubmitEditing={handleLogin}
             returnKeyType="next"
           />
@@ -140,7 +138,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate, setOt
             onChangeText={(t) => { setPassword(t); setError(null); }}
             secureTextEntry={secureText}
             autoCapitalize="none"
-            autoComplete="password"
+            autoComplete="new-password"
             onKeyPress={handleKeyPress}
             onSubmitEditing={handleLogin}
             returnKeyType="done"

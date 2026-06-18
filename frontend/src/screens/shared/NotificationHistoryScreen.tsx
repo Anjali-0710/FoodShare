@@ -30,12 +30,11 @@ export const NotificationHistoryScreen: React.FC<NotificationHistoryScreenProps>
   const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
 
   const fetchHistory = useCallback(async (isSilent = false) => {
+    if (!user?.id) return;
     if (!isSilent) dispatch(setLoading(true));
     try {
-      const response = await NotificationService.getNotificationHistory(token);
-      if (response.success) {
-        dispatch(setHistory(response.history));
-      }
+      const response = await NotificationService.getNotifications(user.id);
+      dispatch(setHistory(response));
     } catch (err: any) {
       dispatch(setError(err.message || 'Failed to fetch history'));
       console.error('Fetch notification history error:', err);

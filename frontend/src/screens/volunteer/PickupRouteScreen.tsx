@@ -15,22 +15,12 @@ interface PickupRouteScreenProps {
   navigate: (screen: string) => void;
 }
 
-const MOCK_TASK = {
-  id: 'task001',
-  foodType: 'Bakery Bread & Pastries',
-  quantity: 60,
-  unit: 'Packets',
-  status: 'Assigned',
-  freshnessScore: 87,
-  pickupAddress: '22 Indiranagar, Bengaluru',
-  qrCode: 'QR-VOL-DEMO-001',
-  donorDetails: { name: 'Modern Bakery', contactNumber: '+91-80-2345-6789' },
-  ngoDetails: { name: 'Care & Feed Foundation', address: '45 Church Street, Bengaluru', contactNumber: '+91-80-2356-7890' },
-};
+
+
 
 export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const { subStatuses } = useSelector((state: RootState) => state.volunteer);
   
   const [task, setTask] = useState<any>(null);
@@ -41,24 +31,16 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
 
   const fetchActiveTask = async () => {
     try {
-      const response = await VolunteerService.getAssignedPickups(token);
-      if (response.success && response.pickups.length > 0) {
-        const primaryTask = response.pickups[0];
-        // Fetch detailed donation info
-        const detailed = await VolunteerService.getAvailablePickups(token);
-        const match = detailed.donations?.find((d: any) => d.id === primaryTask.id || d._id === primaryTask.id || d._id === primaryTask._id);
-        if (match) {
-          setTask(match);
-        } else {
-          setTask(primaryTask);
-        }
+      if (!user?.id) return;
+      const assigned = await VolunteerService.getAssignedPickups(user.id);
+      if (Array.isArray(assigned) && assigned.length > 0) {
+        setTask(assigned[0]);
       } else {
         setTask(null);
       }
     } catch (err) {
       console.error('Fetch active task error:', err);
-      // Fallback for demo
-      setTask(MOCK_TASK);
+      setTask(null);
     } finally {
       setLoading(false);
     }
@@ -88,19 +70,16 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     setActionLoading(true);
 
     try {
-      const response = await VolunteerService.updateStatus(taskId, 'Picked Up', token);
-      if (response.success) {
-        dispatch(setSubStatus({ id: taskId, status: null })); // Clear sub-status
-        setTask(response.donation);
-        
-        // Notify
-        dispatch(addVolunteerNotification({
-          type: 'new_assignment',
-          title: 'Food Picked Up! 📦',
-          message: `Cargo loaded. Deliver ${task.foodType} to ${task.ngoDetails?.name || 'NGO'}.`,
-          donationId: taskId
-        }));
-      }
+      const updated = await VolunteerService.updateStatus(taskId, 'Picked Up', user?.id || '');
+      dispatch(setSubStatus({ id: taskId, status: null }));
+      setTask(updated);
+
+      dispatch(addVolunteerNotification({
+        type: 'new_assignment',
+        title: 'Food Picked Up! 📦',
+        message: `Cargo loaded. Deliver ${task.foodType} to ${task.ngoName || task.ngoDetails?.name || 'NGO'}.`,
+        donationId: taskId
+      }));
     } catch (error: any) {
       console.error('Confirm pickup error:', error);
       alert(error.message || 'Error updating pickup status.');
@@ -129,19 +108,16 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     setActionLoading(true);
 
     try {
-      const response = await VolunteerService.updateStatus(taskId, 'Delivered', token);
-      if (response.success) {
-        dispatch(setSubStatus({ id: taskId, status: null })); // Clear substatus
-        setTask(response.donation);
+      const updated = await VolunteerService.updateStatus(taskId, 'Delivered', user?.id || '');
+      dispatch(setSubStatus({ id: taskId, status: null }));
+      setTask(updated);
 
-        // Notify
-        dispatch(addVolunteerNotification({
-          type: 'delivery_reminder',
-          title: 'Arrived at Destination! 🏢',
-          message: `Please request the NGO representative to present the QR code to verify.`,
-          donationId: taskId
-        }));
-      }
+      dispatch(addVolunteerNotification({
+        type: 'delivery_reminder',
+        title: 'Arrived at Destination! 🏢',
+        message: `Please request the NGO representative to present the QR code to verify.`,
+        donationId: taskId
+      }));
     } catch (error: any) {
       console.error('Mark delivered error:', error);
       alert(error.message || 'Error updating status to Delivered.');
@@ -155,21 +131,17 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     setLoading(true);
 
     try {
-      const response = await VolunteerService.verifyQrCode(scannedCode, token);
-      if (response.success) {
-        // Award Karma locally
-        dispatch(updateKarmaPoints(50));
-        
-        // Dispatch completion confirmation notification
-        dispatch(addVolunteerNotification({
-          type: 'completion_confirmation',
-          title: 'Delivery Finalized! 🎉',
-          message: `Success! Delivery completed. +50 Karma Points credited to your account.`,
-          donationId: task.id || task._id
-        }));
+      await VolunteerService.verifyQrCode(scannedCode);
+      dispatch(updateKarmaPoints(50));
 
-        setCompletedSuccess(true);
-      }
+      dispatch(addVolunteerNotification({
+        type: 'completion_confirmation',
+        title: 'Delivery Finalized! 🎉',
+        message: `Success! Delivery completed. +50 Karma Points credited to your account.`,
+        donationId: task.id || task._id
+      }));
+
+      setCompletedSuccess(true);
     } catch (error: any) {
       console.error('QR verification error:', error);
       alert(error.message || 'QR Code verification failed. Please check with the NGO.');

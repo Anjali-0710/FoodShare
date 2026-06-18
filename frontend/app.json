@@ -4,7 +4,13 @@
     "slug": "foodshare-ai",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B5E20"
+    },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
@@ -15,10 +21,11 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.foodshareai.app"
-    },
-    "splash": {
-      "backgroundColor": "#ffffff"
+      "package": "com.foodshareai.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1B5E20"
+      }
     },
     "web": {
       "bundler": "metro"

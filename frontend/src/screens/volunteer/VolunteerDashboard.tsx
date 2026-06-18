@@ -20,14 +20,12 @@ interface VolunteerDashboardProps {
   navigate: (screen: string) => void;
 }
 
-const MOCK_AVAILABLE = [
-  { id: 'av001', foodType: 'Cooked Biryani', quantity: 80, unit: 'Plates', donorName: 'Spice Garden Restaurant', ngoName: 'Hunger Free India' },
-  { id: 'av002', foodType: 'Fresh Fruits', quantity: 45, unit: 'Kg', donorName: 'Big Basket Outlet', ngoName: 'Care & Feed Foundation' },
-];
+
+
 
 export const VolunteerDashboard: React.FC<VolunteerDashboardProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const { activePickups, leaderboard, subStatuses, unreadCount } = useSelector((state: RootState) => state.volunteer);
 
   const [unassignedPickups, setUnassignedPickups] = useState<any[]>([]);
@@ -39,54 +37,28 @@ export const VolunteerDashboard: React.FC<VolunteerDashboardProps> = ({ theme, n
     if (!isSilent) setLoading(true);
     setError(null);
     try {
-      // 1. Fetch unassigned pickups (status is Accepted)
-      const availableRes = await VolunteerService.getAvailablePickups(token);
-      if (availableRes.success) {
-        setUnassignedPickups(availableRes.donations);
-      }
+      // 1. Fetch unassigned pickups (Accepted status — awaiting volunteer)
+      const available = await VolunteerService.getAvailablePickups();
+      setUnassignedPickups(available);
 
-      // 2. Fetch assigned pickups
-      const activeRes = await VolunteerService.getAssignedPickups(token);
-      if (activeRes.success) {
-        dispatch(setActivePickups(activeRes.pickups));
+      // 2. Fetch pickups assigned to this volunteer
+      if (user?.id) {
+        const assigned = await VolunteerService.getAssignedPickups(user.id);
+        dispatch(setActivePickups(assigned as any));
       }
 
       // 3. Fetch leaderboard
-      const leaderboardRes = await VolunteerService.getLeaderboard(token);
-      if (leaderboardRes.success) {
-        dispatch(setLeaderboard(leaderboardRes.leaderboard));
-      }
+      const board = await VolunteerService.getLeaderboard();
+      dispatch(setLeaderboard(board as any));
     } catch (err: any) {
       console.error('Fetch volunteer dashboard data error:', err);
-      setError('Unable to reach server. Displaying simulation details.');
-      
-      // Fallback/Simulation if API fails (e.g. backend offline or startup delay)
-      setUnassignedPickups(MOCK_AVAILABLE);
-      
-      const simulatedActive = [
-        {
-          id: 'as001',
-          foodType: 'Bakery Bread',
-          quantity: 60,
-          unit: 'Packets',
-          status: 'Assigned',
-          donorDetails: { name: 'Modern Bakery', contactNumber: '+91-80-2345-6789' },
-          ngoDetails: { name: 'Care & Feed Foundation' }
-        }
-      ];
-      dispatch(setActivePickups(simulatedActive as any));
-      
-      const simulatedLeaderboard = [
-        { id: 'lv1', name: 'Priya Nair', completedPickups: 48, volunteerScore: 2400 },
-        { id: 'lv2', name: 'Arjun Mehta', completedPickups: 36, volunteerScore: 1800 },
-        { id: 'lv3', name: 'Rohan Sharma', completedPickups: 24, volunteerScore: 1200 },
-      ];
-      dispatch(setLeaderboard(simulatedLeaderboard));
+      setError('Failed to load data. Please check your connection and refresh.');
+      setUnassignedPickups([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, dispatch]);
+  }, [user?.id, dispatch]);
 
   useEffect(() => {
     fetchData();
@@ -98,29 +70,31 @@ export const VolunteerDashboard: React.FC<VolunteerDashboardProps> = ({ theme, n
   };
 
   const handleClaim = async (id: string, foodType: string, quantity: number, unit: string, donorName: string) => {
+    if (!user?.id || !user?.name) {
+      alert('User session not found. Please log in again.');
+      return;
+    }
     try {
-      const response = await VolunteerService.claimPickup(id, token);
-      if (response.success) {
-        // Generate immediate assignment notification
+      await VolunteerService.claimPickup(id, user.id, user.name);
+
+      // Notify
+      dispatch(addVolunteerNotification({
+        type: 'new_assignment',
+        title: 'New Delivery Claimed! 🚚',
+        message: `You claimed a delivery task for ${foodType} (${quantity} ${unit}) from ${donorName}.`,
+        donationId: id
+      }));
+
+      setTimeout(() => {
         dispatch(addVolunteerNotification({
-          type: 'new_assignment',
-          title: 'New Delivery Claimed! 🚚',
-          message: `You claimed a delivery task for ${foodType} (${quantity} ${unit}) from ${donorName}.`,
+          type: 'pickup_reminder',
+          title: 'Pickup Reminder ⏰',
+          message: `Please pick up the food from ${donorName} soon to maintain freshness.`,
           donationId: id
         }));
+      }, 3000);
 
-        // Generate follow-up pickup reminder
-        setTimeout(() => {
-          dispatch(addVolunteerNotification({
-            type: 'pickup_reminder',
-            title: 'Pickup Reminder ⏰',
-            message: `Please pick up the food from ${donorName} soon to maintain freshness.`,
-            donationId: id
-          }));
-        }, 3000);
-
-        fetchData(true);
-      }
+      fetchData(true);
     } catch (err: any) {
       console.error('Claim task error:', err);
       alert(err.message || 'Failed to claim delivery task.');
