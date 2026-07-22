@@ -19,6 +19,11 @@ concurrency:
   group: ${{ github.ref }}-android-e2e
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 env:
   JAVA_VERSION: "17"
   NODE_VERSION: "20"
@@ -306,7 +311,11 @@ jobs:
           echo "GitHub Pages payload prepared:"
           find "$PAGES_DIR" -type f | head -30
 
-      - name: "Stage 19a — Upload GitHub Pages Payload"
+      - name: "Stage 19a — Configure GitHub Pages"
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+
+      - name: "Stage 19b — Upload GitHub Pages Payload"
         if: always() && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
@@ -321,12 +330,17 @@ jobs:
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - name: "Configure GitHub Pages"
+        uses: actions/configure-pages@v5
+
       - name: "Stage 20-21 — Deploy to GitHub Pages"
         id: deploy
         uses: actions/deploy-pages@v4
+

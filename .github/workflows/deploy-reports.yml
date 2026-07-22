@@ -76,6 +76,9 @@ jobs:
           echo "Pages output structure:"
           find "$PAGES_OUT" -type f | head -30
 
+      - name: "Configure GitHub Pages"
+        uses: actions/configure-pages@v5
+
       - name: "Upload Pages Artifact"
         uses: actions/upload-pages-artifact@v3
         with:
@@ -88,7 +91,14 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
+      - name: "Configure GitHub Pages"
+        uses: actions/configure-pages@v5
+
       - name: "Deploy to GitHub Pages"
         id: deploy
         uses: actions/deploy-pages@v4
