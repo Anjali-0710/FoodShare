@@ -1,0 +1,104 @@
+name: "Deploy E2E Reports to GitHub Pages"
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["FoodReach Android Appium E2E CI/CD Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-pages:
+    name: "Build Pages Site"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout gh-pages branch (if exists)"
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+        continue-on-error: true
+
+      - name: "Download Latest Test Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "foodreach-e2e-test-results-build-*"
+          merge-multiple: true
+          path: ./artifacts
+        continue-on-error: true
+
+      - name: "Assemble GitHub Pages Structure"
+        run: |
+          PAGES_OUT="./pages-out"
+          LATEST_DIR="${PAGES_OUT}/reports/latest"
+          mkdir -p "$LATEST_DIR/screenshots" "$LATEST_DIR/logs"
+
+          # Copy HTML reports
+          if [ -d artifacts/HTML ]; then
+            cp -r artifacts/HTML/. "$LATEST_DIR/"
+          fi
+
+          # Copy screenshots and logs
+          for dir in artifacts/screenshots artifacts/logs; do
+            [ -d "$dir" ] && cp -r "${dir}/." "${LATEST_DIR}/$(basename $dir)/"
+          done
+
+          # Create site root redirect
+          cat > "${PAGES_OUT}/index.html" << 'INDEXEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="0;url=reports/latest/execution-report.html">
+            <title>FoodReach Automation — Redirecting...</title>
+            <style>
+              body { font-family: -apple-system, sans-serif; background: #0F172A; color: #FFFFFF;
+                     display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+              a { color: #22C55E; }
+            </style>
+          </head>
+          <body>
+            <p>Redirecting to <a href="reports/latest/execution-report.html">Latest Execution Report</a>...</p>
+          </body>
+          </html>
+          INDEXEOF
+
+          echo "Pages output structure:"
+          find "$PAGES_OUT" -type f | head -30
+
+      - name: "Upload Pages Artifact"
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages-out
+
+  deploy-pages:
+    name: "Deploy to GitHub Pages"
+    needs: build-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Deploy to GitHub Pages"
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: "Report Live URL"
+        run: |
+          echo "## 🌐 Reports Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Link | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Latest Execution Report | [${{ steps.deploy.outputs.page_url }}reports/latest/execution-report.html](${{ steps.deploy.outputs.page_url }}reports/latest/execution-report.html) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Analytics Dashboard | [${{ steps.deploy.outputs.page_url }}reports/latest/dashboard.html](${{ steps.deploy.outputs.page_url }}reports/latest/dashboard.html) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Historical Trends | [${{ steps.deploy.outputs.page_url }}reports/latest/trends.html](${{ steps.deploy.outputs.page_url }}reports/latest/trends.html) |" >> $GITHUB_STEP_SUMMARY

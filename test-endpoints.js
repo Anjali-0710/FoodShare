@@ -18,12 +18,13 @@ async function runTests() {
 
     // 2. Register a new Donor
     console.log('\nStep 2: Registering a test Donor...');
+    const testEmail = `baker-${Date.now()}@foodshare.com`;
     const regRes = await fetch(`${BACKEND_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'New Delhi Organic Bakes',
-        email: `baker-${Date.now()}@foodshare.com`,
+        email: testEmail,
         password: 'password123',
         role: 'donor',
         contactNumber: '+919888777666',
@@ -34,8 +35,20 @@ async function runTests() {
     });
     const regData = await regRes.json();
     if (!regData.success) throw new Error(regData.message);
-    const token = regData.token;
-    console.log('✅ Donor registered successfully! Token acquired.');
+
+    // Verify OTP to activate user and acquire token
+    const verifyRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        code: regData.code
+      })
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) throw new Error(verifyData.message);
+    const token = verifyData.token;
+    console.log('✅ Donor registered and OTP verified! Token acquired.');
 
     // 3. Login User
     console.log('\nStep 3: Logging in with registered user...');
@@ -43,7 +56,7 @@ async function runTests() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: regData.user.email,
+        email: testEmail,
         password: 'password123'
       })
     });
@@ -134,7 +147,7 @@ async function runTests() {
 
     // 9. Forgot and Reset Password Flow
     console.log('\nStep 9: Testing Forgot & Reset Password Flow...');
-    const testEmail = `forgot-${Date.now()}@foodshare.com`;
+    const forgotEmail = `forgot-${Date.now()}@foodshare.com`;
     
     // Register temporary user
     const tempReg = await fetch(`${BACKEND_URL}/auth/register`, {
@@ -142,7 +155,7 @@ async function runTests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Temporary Reset Tester',
-        email: testEmail,
+        email: forgotEmail,
         password: 'initialpassword123',
         role: 'volunteer',
         contactNumber: '+919999000011',
@@ -152,11 +165,23 @@ async function runTests() {
     const tempRegData = await tempReg.json();
     if (!tempRegData.success) throw new Error(`Temp registration failed: ${tempRegData.message}`);
 
+    // Verify OTP to activate temp user
+    const tempVerifyRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: forgotEmail,
+        code: tempRegData.code
+      })
+    });
+    const tempVerifyData = await tempVerifyRes.json();
+    if (!tempVerifyData.success) throw new Error(`Temp OTP verification failed: ${tempVerifyData.message}`);
+
     // Request forgot password code
     const forgotRes = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: testEmail })
+      body: JSON.stringify({ email: forgotEmail })
     });
     const forgotData = await forgotRes.json();
     if (!forgotData.success) throw new Error(`Forgot password call failed: ${forgotData.message}`);
@@ -168,7 +193,7 @@ async function runTests() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: testEmail,
+        email: forgotEmail,
         code: code,
         newPassword: 'newsecurepassword456'
       })
@@ -182,7 +207,7 @@ async function runTests() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: testEmail,
+        email: forgotEmail,
         password: 'newsecurepassword456'
       })
     });

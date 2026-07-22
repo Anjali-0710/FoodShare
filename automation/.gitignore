@@ -1,0 +1,21 @@
+# Automation Framework — Git Ignore Rules
+
+# Generated reports (recreated on every run)
+reports/
+screenshots/
+logs/
+
+# Node modules
+node_modules/
+
+# TypeScript compiled output
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,19 @@
+{
+  "name": "foodreach-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium E2E tests for FoodReach AI Platform",
+  "scripts": {
+    "login":         "mocha tests/login.test.js --timeout 30000",
+    "register":      "mocha tests/register.test.js --timeout 30000",
+    "donor":         "mocha tests/donor.test.js --timeout 60000",
+    "ngo":           "mocha tests/ngo.test.js --timeout 60000",
+    "volunteer":     "mocha tests/volunteer.test.js --timeout 60000",
+    "admin":         "mocha tests/admin.test.js --timeout 60000",
+    "notifications": "mocha tests/notifications.test.js --timeout 30000",
+    "all":           "mocha tests/**/*.test.js --timeout 60000"
+  },
+  "devDependencies": {
+    "mocha": "^10.4.0",
+    "selenium-webdriver": "^4.20.0"
+  }
+}

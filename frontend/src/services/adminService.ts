@@ -1,9 +1,16 @@
 import { supabase } from './supabase';
-import { apiCall } from './api';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// All operations use the publishable (anon) Supabase key.
+// Admin-specific writes (Activate/Deactivate/Edit/Delete) are permitted by the
+// "profiles_update_admin" and "profiles_delete_admin" RLS policies defined in
+// supabase/migrations/admin_rls_policy.sql — run that migration once in the
+// Supabase Dashboard > SQL Editor to enable these operations.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export class AdminService {
   /**
-   * Get all users (admin only — uses service role via backend proxy)
+   * Get all users — SELECT policy allows all authenticated users.
    */
   static async getUsers(token: string | null) {
     const { data, error } = await supabase
@@ -21,22 +28,26 @@ export class AdminService {
         role: u.role,
         contactNumber: u.contact_number ?? '',
         address: u.address ?? '',
-        gpsLocation: u.latitude && u.longitude ? { latitude: u.latitude, longitude: u.longitude } : undefined,
+        gpsLocation: u.latitude && u.longitude
+          ? { latitude: u.latitude, longitude: u.longitude }
+          : undefined,
         ngoCapacity: u.ngo_capacity ?? undefined,
         foodTypePreference: u.food_type_preference ?? [],
         volunteerScore: u.volunteer_score ?? 0,
         completedPickups: u.completed_pickups ?? 0,
-        isActive: u.is_active,
+        isActive: u.is_active,   // always the real DB value — never mocked
         createdAt: u.created_at,
       })),
     };
   }
 
   /**
-   * Update user profile (admin)
+   * Update user profile (admin).
+   * Requires the "profiles_update_admin" RLS policy to be applied.
    */
   static async updateUser(id: string, userData: {
     name: string;
+    email: string;
     role?: string;
     contactNumber?: string;
     address?: string;
@@ -45,6 +56,7 @@ export class AdminService {
       .from('profiles')
       .update({
         name: userData.name,
+        email: userData.email,
         role: userData.role as any,
         contact_number: userData.contactNumber,
         address: userData.address,
@@ -52,11 +64,16 @@ export class AdminService {
       .eq('id', id);
 
     if (error) throw new Error(error.message);
-    return { success: true, message: 'User updated successfully' };
+    return {
+      success: true,
+      message: 'User updated successfully',
+      user: { id, ...userData },
+    };
   }
 
   /**
-   * Toggle user active/inactive status
+   * Toggle user active/inactive status (admin).
+   * Requires the "profiles_update_admin" RLS policy to be applied.
    */
   static async toggleUserStatus(id: string, isActive: boolean, token: string | null) {
     const { error } = await supabase
@@ -65,21 +82,25 @@ export class AdminService {
       .eq('id', id);
 
     if (error) throw new Error(error.message);
-    return { success: true, message: `User ${isActive ? 'activated' : 'deactivated'} successfully` };
+    return {
+      success: true,
+      message: `User account ${isActive ? 'activated' : 'deactivated'} successfully`,
+      user: { id, isActive },
+    };
   }
 
   /**
-   * Delete user (admin) — proxied through backend for auth cleanup
+   * Delete user (admin).
+   * Requires the "profiles_delete_admin" RLS policy to be applied.
    */
   static async deleteUser(id: string, token: string | null) {
-    // Delete profile (Auth user deletion requires service role — proxy via backend)
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (error) throw new Error(error.message);
     return { success: true, message: 'User deleted successfully' };
   }
 
   /**
-   * Get all donations (admin)
+   * Get all donations (admin).
    */
   static async getDonations(token: string | null) {
     const { data, error } = await supabase
@@ -95,7 +116,7 @@ export class AdminService {
   }
 
   /**
-   * Update donation status (admin)
+   * Update donation status (admin).
    */
   static async updateDonationStatus(id: string, status: string, token: string | null) {
     const { error } = await supabase
@@ -108,7 +129,7 @@ export class AdminService {
   }
 
   /**
-   * Delete a donation (admin)
+   * Delete a donation (admin).
    */
   static async deleteDonation(id: string, token: string | null) {
     const { error } = await supabase.from('donations').delete().eq('id', id);
@@ -117,7 +138,7 @@ export class AdminService {
   }
 
   /**
-   * Get system logs
+   * Get system logs.
    */
   static async getLogs(token: string | null) {
     const { data, error } = await supabase
@@ -141,7 +162,7 @@ export class AdminService {
   }
 
   /**
-   * Get analytics data (real data from Supabase)
+   * Get analytics data (real data from Supabase).
    */
   static async getAnalytics(token: string | null) {
     const [usersResult, donationsResult] = await Promise.all([
@@ -153,16 +174,19 @@ export class AdminService {
     const donations = donationsResult.data ?? [];
 
     const totalDonations = donations.length;
-    const completedDonations = donations.filter(d => d.status === 'Completed' || d.status === 'Delivered').length;
-    const activeDonations = donations.filter(d => d.status === 'Pending' || d.status === 'Accepted' || d.status === 'Assigned' || d.status === 'Picked Up').length;
+    const completedDonations = donations.filter(d =>
+      d.status === 'Completed' || d.status === 'Delivered'
+    ).length;
+    const activeDonations = donations.filter(d =>
+      ['Pending', 'Accepted', 'Assigned', 'Picked Up'].includes(d.status)
+    ).length;
     const cancelledDonations = donations.filter(d => d.status === 'Cancelled').length;
 
-    // Food saved in Kg — count all completed donations in Kg units + estimate plate-based
     const foodSavedKg = donations
-      .filter(d => (d.status === 'Completed' || d.status === 'Delivered'))
+      .filter(d => d.status === 'Completed' || d.status === 'Delivered')
       .reduce((sum, d) => {
         if (d.unit === 'Kg') return sum + (d.quantity ?? 0);
-        if (d.unit === 'Plates') return sum + (d.quantity ?? 0) * 0.3; // ~300g per plate
+        if (d.unit === 'Plates') return sum + (d.quantity ?? 0) * 0.3;
         if (d.unit === 'Packets') return sum + (d.quantity ?? 0) * 0.5;
         return sum + (d.quantity ?? 0);
       }, 0);
@@ -187,18 +211,20 @@ export class AdminService {
         activeDonations,
         cancelledDonations,
         foodSavedKg: Math.round(foodSavedKg * 10) / 10,
-        totalBeneficiaries: completedDonations * 12, // ~12 people fed per completed donation
+        totalBeneficiaries: completedDonations * 12,
         totalDonors,
         totalNgos,
         totalVolunteers,
         foodTypeBreakdown,
-        completionRate: totalDonations > 0 ? Math.round((completedDonations / totalDonations) * 100) : 0,
+        completionRate: totalDonations > 0
+          ? Math.round((completedDonations / totalDonations) * 100)
+          : 0,
       },
     };
   }
 
   /**
-   * Get reports (proxied to backend for PDF generation etc)
+   * Get reports.
    */
   static async getReports(token: string | null) {
     return AdminService.getAnalytics(token);

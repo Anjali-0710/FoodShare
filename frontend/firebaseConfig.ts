@@ -1,5 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Replace with your real Firebase Project configurations
 const firebaseConfig = {
@@ -15,6 +17,23 @@ const firebaseConfig = {
 // Initialize Firebase services
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+let dbInstance: any = null;
+try {
+  dbInstance = getFirestore(app);
+} catch (err) {
+  console.warn('Firebase Firestore initialization failed, using mock/offline mode:', err);
+}
+
+let storageInstance: any = null;
+try {
+  storageInstance = getStorage(app);
+} catch (err) {
+  console.warn('Firebase Storage initialization failed, using mock/offline mode:', err);
+}
+
+export const db = dbInstance;
+export const storage = storageInstance;
 
 export const logoutFirebase = async (): Promise<void> => {
   try {

@@ -23,6 +23,9 @@ export interface DonationItem {
   freshnessScore: number;
   qrCode: string;
   createdAt: string;
+  ngoDetails?: { name: string; contactNumber?: string; email?: string; address?: string; latitude?: number; longitude?: number };
+  volunteerDetails?: { name: string; contactNumber?: string; email?: string };
+  donorDetails?: { name: string; contactNumber?: string; email?: string };
 }
 
 export interface NgoRecommendation {

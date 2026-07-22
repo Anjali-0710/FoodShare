@@ -117,7 +117,8 @@ export const register = async (req: Request, res: Response) => {
     return res.status(201).json({
       success: true,
       message: 'Registration successful. Please verify your email using the OTP sent.',
-      email
+      email,
+      code: otp // Return the code in JSON response for test/harness ease
     });
 
   } catch (error: any) {

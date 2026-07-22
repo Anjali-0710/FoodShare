@@ -6,6 +6,8 @@ import { RootState } from '../../store';
 import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 import MapMock from '../../components/MapMock';
+import OSMMap from '../../components/OSMMap';
+import { supabase } from '../../services/supabase';
 
 interface TrackDonationScreenProps {
   theme: AppTheme;
@@ -42,7 +44,49 @@ export const TrackDonationScreen: React.FC<TrackDonationScreenProps> = ({ theme,
       const active = donations.find((d: any) =>
         ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'].includes(d.status)
       );
-      setDonation(active || MOCK_ACTIVE_DONATION);
+      if (active) {
+        // Fetch additional details if they exist in Supabase
+        if (active.ngoId) {
+          try {
+            const { data: ngoProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number, address, latitude, longitude')
+              .eq('id', active.ngoId)
+              .single();
+            if (ngoProfile) {
+              active.ngoDetails = {
+                name: ngoProfile.name,
+                contactNumber: ngoProfile.contact_number,
+                address: ngoProfile.address,
+                latitude: ngoProfile.latitude,
+                longitude: ngoProfile.longitude,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching NGO profile:', e);
+          }
+        }
+        if (active.volunteerId) {
+          try {
+            const { data: volunteerProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number')
+              .eq('id', active.volunteerId)
+              .single();
+            if (volunteerProfile) {
+              active.volunteerDetails = {
+                name: volunteerProfile.name,
+                contactNumber: volunteerProfile.contact_number,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching volunteer profile:', e);
+          }
+        }
+        setDonation(active);
+      } else {
+        setDonation(MOCK_ACTIVE_DONATION);
+      }
     } catch (error) {
       setDonation(MOCK_ACTIVE_DONATION);
     } finally {
@@ -134,11 +178,25 @@ export const TrackDonationScreen: React.FC<TrackDonationScreenProps> = ({ theme,
 
         {/* Map View */}
         {donation.status !== 'Pending' && donation.status !== 'Accepted' ? (
-          <MapMock
+          <OSMMap
             theme={theme}
-            pickupLabel={donation.donorDetails?.name || 'Pickup Point'}
-            deliveryLabel={donation.ngoDetails?.name || 'NGO Destination'}
-            animateRoute={donation.status === 'Assigned' || donation.status === 'Picked Up'}
+            latitude={donation.latitude ?? donation.gpsLocation?.latitude ?? 12.9716}
+            longitude={donation.longitude ?? donation.gpsLocation?.longitude ?? 77.5946}
+            markers={[
+              ((donation.latitude && donation.longitude) || (donation.gpsLocation?.latitude && donation.gpsLocation?.longitude))
+                ? {
+                    latitude: donation.latitude ?? donation.gpsLocation?.latitude,
+                    longitude: donation.longitude ?? donation.gpsLocation?.longitude,
+                    label: donation.donorDetails?.name || 'Pickup Point',
+                    color: theme.colors.accent
+                  }
+                : { latitude: 12.9716, longitude: 77.5946, label: 'Pickup Point', color: theme.colors.accent },
+              ...(donation.ngoDetails?.latitude && donation.ngoDetails?.longitude
+                ? [{ latitude: donation.ngoDetails.latitude, longitude: donation.ngoDetails.longitude, label: donation.ngoDetails?.name || 'NGO', color: theme.colors.primary }]
+                : []),
+            ]}
+            height={240}
+            zoom={13}
           />
         ) : (
           <View style={[styles.mapPlaceholder, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>

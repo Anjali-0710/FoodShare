@@ -1,14 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  FlatList,
+  TextInput,
+  useWindowDimensions,
+} from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  BarChart, Users, Clipboard, LogOut, Sun, Moon, Search, FileText,
-  CheckCircle, RefreshCw, Edit, Trash2, Eye, Download, Printer, Filter, X
+  BarChart2,
+  Users,
+  Clipboard,
+  LogOut,
+  Sun,
+  Moon,
+  Search,
+  FileText,
+  CheckCircle,
+  RefreshCw,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  Download,
+  Printer,
+  X,
+  MessageSquare,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  Heart,
+  Truck,
+  TrendingUp,
+  MapPin,
+  Calendar,
+  AlertCircle,
+  Camera
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { AdminService } from '../../services/adminService';
 import { AppTheme } from '../../theme/theme';
+import { db, storage } from '../../../firebaseConfig';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../../services/supabase';
 
 interface AdminDashboardProps {
   theme: AppTheme;
@@ -48,9 +89,9 @@ const MOCK_ADMIN_DATA = {
     ]
   },
   users: [
-    { _id: 'u1', id: 'u1', name: 'Rajesh Kumar', email: 'donor@foodshare.com', role: 'donor', contactNumber: '+91-98765-43210', address: '123 Donor Lane, Bangalore', isActive: true, createdAt: '2026-04-10T12:00:00Z' },
-    { _id: 'u2', id: 'u2', name: 'Care & Feed Foundation', email: 'ngo@foodshare.com', role: 'ngo', contactNumber: '+91-80-2356-7890', address: '456 Charity Road, Bangalore', isActive: true, createdAt: '2026-05-15T12:00:00Z' },
-    { _id: 'u3', id: 'u3', name: 'Rohan Sharma', email: 'volunteer@foodshare.com', role: 'volunteer', contactNumber: '+91-99887-65432', address: '789 Service St, Bangalore', isActive: true, createdAt: '2026-05-20T12:00:00Z', volunteerScore: 180 },
+    { _id: 'u1', id: 'u1', name: 'Rajesh Kumar', email: 'donor@foodreach.com', role: 'donor', contactNumber: '+91-98765-43210', address: '123 Donor Lane, Bangalore', isActive: true, createdAt: '2026-04-10T12:00:00Z' },
+    { _id: 'u2', id: 'u2', name: 'Care & Feed Foundation', email: 'ngo@foodreach.com', role: 'ngo', contactNumber: '+91-80-2356-7890', address: '456 Charity Road, Bangalore', isActive: true, createdAt: '2026-05-15T12:00:00Z' },
+    { _id: 'u3', id: 'u3', name: 'Rohan Sharma', email: 'volunteer@foodreach.com', role: 'volunteer', contactNumber: '+91-99887-65432', address: '789 Service St, Bangalore', isActive: true, createdAt: '2026-05-20T12:00:00Z', volunteerScore: 180 },
     { _id: 'u4', id: 'u4', name: 'Priya Hotels', email: 'priya@hotels.com', role: 'donor', contactNumber: '+91-80-9876-5432', address: '55 Plaza Way, Bangalore', isActive: true, createdAt: '2026-06-01T12:00:00Z' },
     { _id: 'u5', id: 'u5', name: 'Hunger Free India', email: 'hfi@ngo.org', role: 'ngo', contactNumber: '+91-22-4567-8901', address: '12 Civic Road, Bangalore', isActive: true, createdAt: '2026-06-05T12:00:00Z' },
     { _id: 'u6', id: 'u6', name: 'Anil Mehta', email: 'anil@volunteer.com', role: 'volunteer', contactNumber: '+91-99443-32211', address: '88 Green Park, Bangalore', isActive: false, createdAt: '2026-06-10T12:00:00Z', volunteerScore: 90 }
@@ -65,14 +106,15 @@ const MOCK_ADMIN_DATA = {
   logs: [
     { _id: 'l1', id: 'l1', action: 'User Register Alert', details: 'New donor Rajesh Kumar registered successfully', timestamp: '2026-06-16T10:00:00Z', performedBy: 'system', role: 'system' },
     { _id: 'l2', id: 'l2', action: 'Donation Created', details: 'Priya Hotels posted Cooked Food donation (30 Plates)', timestamp: '2026-06-16T11:00:00Z', performedBy: 'priya@hotels.com', role: 'donor' },
-    { _id: 'l3', id: 'l3', action: 'Donation Status Adjusted', details: 'Admin changed status of donation d3 to Assigned', timestamp: '2026-06-16T12:00:00Z', performedBy: 'admin@foodshare.com', role: 'admin' },
-    { _id: 'l4', id: 'l4', action: 'User Account Deactivated', details: 'Deactivated login credentials for user ID: u6', timestamp: '2026-06-16T13:00:00Z', performedBy: 'admin@foodshare.com', role: 'admin' }
+    { _id: 'l3', id: 'l3', action: 'Donation Status Adjusted', details: 'Admin changed status of donation d3 to Assigned', timestamp: '2026-06-16T12:00:00Z', performedBy: 'admin@foodreach.com', role: 'admin' },
+    { _id: 'l4', id: 'l4', action: 'User Account Deactivated', details: 'Deactivated login credentials for user ID: u6', timestamp: '2026-06-16T13:00:00Z', performedBy: 'admin@foodreach.com', role: 'admin' }
   ]
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
   const { token, user } = useSelector((state: RootState) => state.auth);
+  const { width } = useWindowDimensions();
 
   // Tabs: analytics | users | donations | reports | logs
   const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'donations' | 'reports' | 'logs'>('analytics');
@@ -83,6 +125,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   const [donationsList, setDonationsList] = useState<any[]>([]);
   const [logsList, setLogsList] = useState<any[]>([]);
   const [reportsData, setReportsData] = useState<any>({ donations: [], users: [], ngos: [], volunteers: [] });
+
+  // Sidebar controls
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Filters
   const [userSearch, setUserSearch] = useState('');
@@ -106,18 +153,167 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   const [selectedReportMonth, setSelectedReportMonth] = useState<string>('All');
   const [reportPreviewList, setReportPreviewList] = useState<any[]>([]);
 
+  // ==========================================
+  // ADDED: Profile States
+  // ==========================================
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('Anjali');
+  const [profilePhone, setProfilePhone] = useState('9876543210');
+  const [profileOrg, setProfileOrg] = useState('FoodReach Organization');
+  const [profileAddress, setProfileAddress] = useState('Bangalore Operations Hub');
+  const [profileBio, setProfileBio] = useState('Senior Administrator managing FoodReach Bangalore cluster operations.');
+  const [profilePicUrl, setProfilePicUrl] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80');
+  const [dateJoined] = useState('2026-02-15');
+
+  // Change Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success'
+  });
+
+  const showSnackbar = (message: string, type: 'success' | 'error') => {
+    setSnackbar({ visible: true, message, type });
+    setTimeout(() => {
+      setSnackbar(prev => ({ ...prev, visible: false }));
+    }, 4000);
+  };
+
+  const isDesktop = width >= 1024;
+
+  const loadAdminProfile = async () => {
+    try {
+      if (!db) {
+        console.warn('Firestore is not initialized.');
+        return;
+      }
+      const docRef = doc(db, 'profiles', user?.id || 'admin');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data?.name) setProfileName(data.name);
+        if (data?.phone) setProfilePhone(data.phone);
+        if (data?.organization) setProfileOrg(data.organization);
+        if (data?.address) setProfileAddress(data.address);
+        if (data?.bio) setProfileBio(data.bio);
+        if (data?.profilePicUrl) setProfilePicUrl(data.profilePicUrl);
+      }
+    } catch (err) {
+      console.warn('Failed to load profile from Firestore:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (showProfileModal) {
+      loadAdminProfile();
+    }
+  }, [showProfileModal]);
+
+  const handleSaveAdminProfile = async () => {
+    if (!profileName.trim()) {
+      showSnackbar('Name cannot be empty.', 'error');
+      return;
+    }
+    if (!/^\d+$/.test(profilePhone.trim())) {
+      showSnackbar('Phone number must contain only digits.', 'error');
+      return;
+    }
+    if (profileBio.length > 200) {
+      showSnackbar('Bio cannot exceed 200 characters.', 'error');
+      return;
+    }
+
+    if (!db || !storage) {
+      showSnackbar('Profile updated successfully (Offline Mode).', 'success');
+      setIsEditingProfile(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let finalPicUrl = profilePicUrl;
+      // We simulate profile pic changes by uploading a pixel base64 to Storage if it starts with 'http' and isn't storage url
+      if (profilePicUrl && !profilePicUrl.includes('firebasestorage')) {
+        try {
+          const mockPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          const response = await fetch(`data:image/png;base64,${mockPngBase64}`);
+          const blob = await response.blob();
+          const storageRef = ref(storage, `profiles/${user?.id || 'admin'}/profile.png`);
+          await uploadBytes(storageRef, blob);
+          finalPicUrl = await getDownloadURL(storageRef);
+          setProfilePicUrl(finalPicUrl);
+        } catch (storageErr) {
+          console.warn('Firebase Storage upload warning:', storageErr);
+        }
+      }
+
+      await setDoc(doc(db, 'profiles', user?.id || 'admin'), {
+        name: profileName,
+        phone: profilePhone,
+        organization: profileOrg,
+        address: profileAddress,
+        bio: profileBio,
+        profilePicUrl: finalPicUrl,
+        email: user?.email || 'admin@foodreach.com',
+        role: user?.role || 'admin',
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      showSnackbar('Profile updated successfully.', 'success');
+      setIsEditingProfile(false);
+    } catch (err: any) {
+      console.error('Firebase save failed:', err);
+      showSnackbar(`Failed to save: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword) {
+      showSnackbar('Current password is required.', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showSnackbar('New password must be at least 6 characters.', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showSnackbar('Passwords do not match.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      showSnackbar('Password updated successfully.', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error('Password update failed:', err);
+      showSnackbar(`Failed to update password: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Analytics
       const analyticsRes = await AdminService.getAnalytics(token);
       if (analyticsRes.success && analyticsRes.analytics) {
-        // Map analytics to stats
         setStats(analyticsRes.analytics);
-        
-        // Build basic charts structure from analytics
         setCharts({
-          categories: Object.keys(analyticsRes.analytics.foodTypeBreakdown).map(k => ({
+          categories: Object.keys(analyticsRes.analytics.foodTypeBreakdown || {}).map(k => ({
             category: k,
             count: analyticsRes.analytics.foodTypeBreakdown[k]
           })),
@@ -126,76 +322,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         });
       }
 
-      // 2. Fetch Users
       const usersRes = await AdminService.getUsers(token);
       if (usersRes.success) {
-        setUsersList(usersRes.users);
+        setUsersList(usersRes.users || []);
       }
 
-      // 3. Fetch Donations
       const donationsRes = await AdminService.getDonations(token);
       if (donationsRes.success) {
-        setDonationsList(donationsRes.donations);
+        setDonationsList(donationsRes.donations || []);
       }
 
-      // 4. Fetch Logs
       const logsRes = await AdminService.getLogs(token);
       if (logsRes.success) {
-        setLogsList(logsRes.logs);
+        setLogsList(logsRes.logs || []);
       }
 
-      // 5. Fetch Reports Data
       const reportsRes = await AdminService.getReports(token);
       if (reportsRes.success) {
-        // In real app, this would be a separate endpoint, here we fallback to mock
         setReportsData({
-          donations: donationsRes.success ? donationsRes.donations : [],
-          users: usersRes.success ? usersRes.users : [],
-          ngos: usersRes.success ? usersRes.users.filter(u => u.role === 'ngo') : [],
-          volunteers: usersRes.success ? usersRes.users.filter(u => u.role === 'volunteer') : []
+          donations: donationsRes.success ? (donationsRes.donations ?? []) : [],
+          users: usersRes.success ? (usersRes.users ?? []) : [],
+          ngos: usersRes.success ? (usersRes.users ?? []).filter(u => u?.role === 'ngo') : [],
+          volunteers: usersRes.success ? (usersRes.users ?? []).filter(u => u?.role === 'volunteer') : []
         });
       }
     } catch (err) {
       console.warn('Backend server offline or access error. Running with seeded dashboard metrics.', err);
-      // Fallback mocks
       setStats(MOCK_ADMIN_DATA.stats);
       setCharts(MOCK_ADMIN_DATA.charts);
       setUsersList(MOCK_ADMIN_DATA.users);
       setDonationsList(MOCK_ADMIN_DATA.donations);
       setLogsList(MOCK_ADMIN_DATA.logs);
       setReportsData({
-        donations: MOCK_ADMIN_DATA.donations.map(d => ({
-          date: new Date(d.createdAt).toLocaleDateString(),
-          time: new Date(d.createdAt).toLocaleTimeString(),
-          foodType: d.foodType,
-          quantity: `${d.quantity} ${d.unit}`,
-          donorName: d.donorName,
+        donations: (MOCK_ADMIN_DATA.donations ?? []).map(d => ({
+          date: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
+          time: d.createdAt ? new Date(d.createdAt).toLocaleTimeString() : '',
+          foodType: d.foodType ?? '',
+          quantity: `${d.quantity ?? 0} ${d.unit ?? ''}`,
+          donorName: d.donorName ?? '',
           ngoName: d.ngoName || 'N/A',
           volunteerName: d.volunteerName || 'N/A',
-          status: d.status
+          status: d.status ?? ''
         })),
-        users: MOCK_ADMIN_DATA.users.map(u => ({
-          date: new Date(u.createdAt).toLocaleDateString(),
-          name: u.name,
-          email: u.email,
-          role: u.role.toUpperCase(),
-          contact: u.contactNumber,
+        users: (MOCK_ADMIN_DATA.users ?? []).map(u => ({
+          date: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '',
+          name: u.name ?? '',
+          email: u.email ?? '',
+          role: (u.role ?? '').toUpperCase(),
+          contact: u.contactNumber ?? '',
           status: u.isActive ? 'Active' : 'Inactive'
         })),
-        ngos: MOCK_ADMIN_DATA.users.filter(u => u.role === 'ngo').map(u => ({
-          ngoName: u.name,
-          email: u.email,
-          contact: u.contactNumber,
-          completedDeliveries: MOCK_ADMIN_DATA.donations.filter(d => d.ngoName === u.name && d.status === 'Completed').length,
+        ngos: (MOCK_ADMIN_DATA.users ?? []).filter(u => u?.role === 'ngo').map(u => ({
+          ngoName: u.name ?? '',
+          email: u.email ?? '',
+          contact: u.contactNumber ?? '',
+          completedDeliveries: (MOCK_ADMIN_DATA.donations ?? []).filter(d => d?.ngoName === u?.name && d?.status === 'Completed').length,
           capacity: 100,
           status: u.isActive ? 'Active' : 'Inactive'
         })),
-        volunteers: MOCK_ADMIN_DATA.users.filter(u => u.role === 'volunteer').map(u => ({
-          volunteerName: u.name,
-          email: u.email,
-          contact: u.contactNumber,
+        volunteers: (MOCK_ADMIN_DATA.users ?? []).filter(u => u?.role === 'volunteer').map(u => ({
+          volunteerName: u.name ?? '',
+          email: u.email ?? '',
+          contact: u.contactNumber ?? '',
           score: u.volunteerScore || 0,
-          completedDeliveries: MOCK_ADMIN_DATA.donations.filter(d => d.volunteerName === u.name && d.status === 'Completed').length,
+          completedDeliveries: (MOCK_ADMIN_DATA.donations ?? []).filter(d => d?.volunteerName === u?.name && d?.status === 'Completed').length,
           status: u.isActive ? 'Active' : 'Inactive'
         }))
       });
@@ -204,22 +394,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const usersRes = await AdminService.getUsers(token);
+      if (usersRes.success) {
+        setUsersList(usersRes.users || []);
+      }
+    } catch (err) {
+      console.warn('Failed to refresh users list from Supabase:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAdminData();
-  }, [token, activeTab]);
+  }, [token]);
 
-  // Compute live local items for additional charts
   const getMonthlyCompleted = () => {
     const months = ['Apr', 'May', 'Jun'];
     const counts: Record<string, number> = { Apr: 0, May: 0, Jun: 0 };
-    donationsList.forEach(d => {
-      if (d.status === 'Completed') {
+    (donationsList ?? []).forEach(d => {
+      if (d?.status === 'Completed') {
         const dateStr = d.createdAt || new Date().toISOString();
         const m = new Date(dateStr).toLocaleString('default', { month: 'short' });
         if (counts[m] !== undefined) counts[m]++;
       }
     });
-    // Fallback counts if empty
     if (counts.Apr === 0 && counts.May === 0 && counts.Jun === 0) {
       return [{ month: 'Apr', count: 1 }, { month: 'May', count: 3 }, { month: 'Jun', count: 4 }];
     }
@@ -227,11 +426,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   };
 
   const getVolunteerPerformance = () => {
-    return usersList
-      .filter(u => u.role === 'volunteer')
+    return (usersList ?? [])
+      .filter(u => u?.role === 'volunteer')
       .map(u => ({
-        name: u.name,
-        score: u.volunteerScore || 0
+        name: u?.name ?? 'Volunteer',
+        score: u?.volunteerScore || 0
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
@@ -240,8 +439,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   const getUserGrowth = () => {
     const months = ['Apr', 'May', 'Jun'];
     const counts: Record<string, number> = { Apr: 1, May: 2, Jun: 3 };
-    usersList.forEach(u => {
-      if (u.createdAt) {
+    (usersList ?? []).forEach(u => {
+      if (u?.createdAt) {
         const m = new Date(u.createdAt).toLocaleString('default', { month: 'short' });
         if (counts[m] !== undefined) counts[m]++;
       }
@@ -249,7 +448,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     return months.map(m => ({ month: m, count: counts[m] }));
   };
 
-  // Compile Preview Report Data whenever selected type/month changes
   useEffect(() => {
     if (!reportsData) return;
     let baseList: any[] = [];
@@ -262,9 +460,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     } else if (selectedReportType === 'volunteers') {
       baseList = reportsData.volunteers || [];
     } else if (selectedReportType === 'monthly') {
-      // Compiled Monthly Aggregate Metrics
-      const totalPostings = donationsList.length;
-      const totalCompleted = donationsList.filter(d => d.status === 'Completed').length;
+      const totalPostings = (donationsList ?? []).length;
+      const totalCompleted = (donationsList ?? []).filter(d => d?.status === 'Completed').length;
       const totalFoodSaved = stats?.foodSavedKg || 0;
       const totalFeds = stats?.totalBeneficiaries || 0;
       baseList = [{
@@ -273,14 +470,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         donationsCompleted: totalCompleted,
         totalFoodSavedKg: totalFoodSaved,
         beneficiariesAssisted: totalFeds,
-        activeNGOs: reportsData.ngos?.filter((n: any) => n.status === 'Active').length || 0,
-        activeVolunteers: reportsData.volunteers?.filter((v: any) => v.status === 'Active').length || 0
+        activeNGOs: (reportsData.ngos ?? []).filter((n: any) => n?.status === 'Active').length || 0,
+        activeVolunteers: (reportsData.volunteers ?? []).filter((v: any) => v?.status === 'Active').length || 0
       }];
     }
 
     if (selectedReportMonth !== 'All' && selectedReportType !== 'monthly') {
       baseList = baseList.filter((item: any) => {
-        const dateField = item.date || item.createdAt;
+        const dateField = item?.date || item?.createdAt;
         if (!dateField) return true;
         const m = new Date(dateField).toLocaleString('default', { month: 'short' });
         return m === selectedReportMonth;
@@ -294,21 +491,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     navigate('Login');
   };
 
-  // User Actions
   const handleEditUserClick = (item: any) => {
     setEditingUser(item);
     setUserForm({
-      name: item.name || '',
-      email: item.email || '',
-      role: item.role || 'donor',
-      contactNumber: item.contactNumber || '',
-      address: item.address || ''
+      name: item?.name || '',
+      email: item?.email || '',
+      role: item?.role || 'donor',
+      contactNumber: item?.contactNumber || '',
+      address: item?.address || ''
     });
     setUserFormErrors({});
   };
 
   const handleSaveUser = async () => {
-    // Validate
     const errors: Record<string, string> = {};
     if (!userForm.name.trim()) errors.name = 'Name is required';
     if (!userForm.email.trim()) {
@@ -325,57 +520,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     }
 
     try {
-      const id = editingUser._id || editingUser.id;
+      const id = editingUser?._id || editingUser?.id;
       const res = await AdminService.updateUser(id, userForm, token);
       if (res.success) {
+        setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, ...userForm } : u));
         setEditingUser(null);
-        fetchAdminData();
+        alert('User details updated successfully!');
+        await fetchUsers();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update user details.');
-      // Local apply mock fallback for visual checks
-      const id = editingUser._id || editingUser.id;
-      setUsersList(prev => prev.map(u => (u._id === id || u.id === id) ? { ...u, ...userForm } : u));
+      const id = editingUser?._id || editingUser?.id;
+      setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, ...userForm } : u));
       setEditingUser(null);
     }
   };
 
   const handleToggleUserActivation = async (item: any) => {
-    const id = item._id || item.id;
-    const targetStatus = item.isActive === false ? true : false;
+    const id = item?._id || item?.id;
+    const targetStatus = item?.isActive === false ? true : false;
     try {
       const res = await AdminService.toggleUserStatus(id, targetStatus, token);
       if (res.success) {
-        fetchAdminData();
+        setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, isActive: targetStatus } : u));
+        alert(`User account ${targetStatus ? 'activated' : 'deactivated'} successfully!`);
+        await fetchUsers();
       }
     } catch (err: any) {
-      // Local apply mock fallback
-      setUsersList(prev => prev.map(u => (u._id === id || u.id === id) ? { ...u, isActive: targetStatus } : u));
+      alert(err.message || 'Failed to toggle user status.');
+      setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, isActive: targetStatus } : u));
     }
   };
 
   const handleDeleteUser = async (item: any) => {
-    const id = item._id || item.id;
-    if (!confirm(`Are you sure you want to permanently delete user "${item.name}"?`)) return;
+    const id = item?._id || item?.id;
+    if (!confirm(`Are you sure you want to permanently delete user "${item?.name}"?`)) return;
     try {
       const res = await AdminService.deleteUser(id, token);
       if (res.success) {
         fetchAdminData();
       }
     } catch (err: any) {
-      // Local apply mock fallback
-      setUsersList(prev => prev.filter(u => u._id !== id && u.id !== id));
+      setUsersList(prev => (prev ?? []).filter(u => u?._id !== id && u?.id !== id));
     }
   };
 
-  // Donation Actions
   const handleOpenStatusEdit = (item: any) => {
     setEditingDonation(item);
-    setDonationStatusVal(item.status);
+    setDonationStatusVal(item?.status ?? 'Pending');
   };
 
   const handleSaveDonationStatus = async () => {
-    const id = editingDonation._id || editingDonation.id;
+    const id = editingDonation?._id || editingDonation?.id;
     try {
       const res = await AdminService.updateDonationStatus(id, donationStatusVal, token);
       if (res.success) {
@@ -383,14 +579,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         fetchAdminData();
       }
     } catch (err: any) {
-      // Local apply mock fallback
-      setDonationsList(prev => prev.map(d => (d._id === id || d.id === id) ? { ...d, status: donationStatusVal } : d));
+      setDonationsList(prev => (prev ?? []).map(d => (d?._id === id || d?.id === id) ? { ...d, status: donationStatusVal } : d));
       setEditingDonation(null);
     }
   };
 
   const handleDeleteDonation = async (item: any) => {
-    const id = item._id || item.id;
+    const id = item?._id || item?.id;
     if (!confirm(`Are you sure you want to permanently delete this donation listing?`)) return;
     try {
       const res = await AdminService.deleteDonation(id, token);
@@ -398,23 +593,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         fetchAdminData();
       }
     } catch (err: any) {
-      // Local apply mock fallback
-      setDonationsList(prev => prev.filter(d => d._id !== id && d.id !== id));
+      setDonationsList(prev => (prev ?? []).filter(d => d?._id !== id && d?.id !== id));
     }
   };
 
-  // Reports Exports
   const handleExportCSV = () => {
-    if (!reportPreviewList.length) {
+    if (!reportPreviewList || !reportPreviewList.length) {
       alert('No data available to export');
       return;
     }
-    const headers = Object.keys(reportPreviewList[0]);
+    const headers = reportPreviewList?.[0] ? Object.keys(reportPreviewList[0]) : [];
     const csvRows = [
       headers.join(','),
-      ...reportPreviewList.map(row =>
+      ...(reportPreviewList ?? []).map(row =>
         headers.map(fieldName => {
-          const val = row[fieldName] === null || row[fieldName] === undefined ? '' : row[fieldName];
+          const val = row?.[fieldName] === null || row?.[fieldName] === undefined ? '' : row[fieldName];
           return `"${String(val).replace(/"/g, '""')}"`;
         }).join(',')
       )
@@ -424,33 +617,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `foodshare_report_${selectedReportType}_${selectedReportMonth}.csv`);
+    link.setAttribute('download', `foodreach_report_${selectedReportType}_${selectedReportMonth}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handleExportExcel = () => {
-    if (!reportPreviewList.length) {
+    if (!reportPreviewList || !reportPreviewList.length) {
       alert('No data available to export');
       return;
     }
-    const headers = Object.keys(reportPreviewList[0]);
+    const headers = reportPreviewList?.[0] ? Object.keys(reportPreviewList[0]) : [];
     let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
     xml += `<Worksheet ss:Name="${selectedReportType.toUpperCase()}"><Table>`;
 
-    // Headers Row
     xml += '<Row>';
     headers.forEach(h => {
       xml += `<Cell><Data ss:Type="String">${h.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>`;
     });
     xml += '</Row>';
 
-    // Data Rows
-    reportPreviewList.forEach(row => {
+    (reportPreviewList ?? []).forEach(row => {
       xml += '<Row>';
       headers.forEach(h => {
-        const val = row[h] === null || row[h] === undefined ? '' : String(row[h]);
+        const val = row?.[h] === null || row?.[h] === undefined ? '' : String(row[h]);
         xml += `<Cell><Data ss:Type="String">${val.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>`;
       });
       xml += '</Row>';
@@ -461,18 +652,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `foodshare_report_${selectedReportType}_${selectedReportMonth}.xls`);
+    link.setAttribute('download', `foodreach_report_${selectedReportType}_${selectedReportMonth}.xls`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handlePrintPDF = () => {
-    if (!reportPreviewList.length) {
+    if (!reportPreviewList || !reportPreviewList.length) {
       alert('No data available to print');
       return;
     }
-    const headers = Object.keys(reportPreviewList[0]);
+    const headers = reportPreviewList?.[0] ? Object.keys(reportPreviewList[0]) : [];
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert('Pop-up blocked. Please allow popups for PDF printing to work.');
@@ -486,7 +677,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
           <title>${title}</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1E293B; background-color: #FFFFFF; }
-            h1 { color: #2E7D32; font-size: 24px; margin-bottom: 5px; }
+            h1 { color: #22C55E; font-size: 24px; margin-bottom: 5px; }
             .subtitle { color: #64748B; font-size: 13px; margin-bottom: 25px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #E2E8F0; padding: 12px 14px; text-align: left; font-size: 12px; }
@@ -495,7 +686,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
           </style>
         </head>
         <body>
-          <h1>FoodShare AI Analytics Portal</h1>
+          <h1>FoodReach Admin Console</h1>
           <div class="subtitle">${title} (Generated on ${new Date().toLocaleString()} by Administrator)</div>
           <table>
             <thead>
@@ -504,9 +695,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
               </tr>
             </thead>
             <tbody>
-              ${reportPreviewList.map(row => `
+              ${(reportPreviewList ?? []).map(row => `
                 <tr>
-                  ${headers.map(h => `<td>${row[h] === null || row[h] === undefined ? 'N/A' : row[h]}</td>`).join('')}
+                  ${headers.map(h => `<td>${row?.[h] === null || row?.[h] === undefined ? 'N/A' : row[h]}</td>`).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -524,693 +715,697 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     printWindow.document.close();
   };
 
-  // Filter listings
-  const filteredUsers = usersList.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.contactNumber.toLowerCase().includes(userSearch.toLowerCase());
-    const matchesRole = selectedUserRole === 'all' || u.role === selectedUserRole;
+  const filteredUsers = (usersList ?? []).filter(u => {
+    const matchesSearch = (u?.name ?? '').toLowerCase().includes((userSearch ?? '').toLowerCase()) ||
+      (u?.email ?? '').toLowerCase().includes((userSearch ?? '').toLowerCase()) ||
+      (u?.contactNumber ?? '').toLowerCase().includes((userSearch ?? '').toLowerCase());
+    const matchesRole = selectedUserRole === 'all' || u?.role === selectedUserRole;
     return matchesSearch && matchesRole;
   });
 
-  const filteredDonations = donationsList.filter(d => {
-    const matchesSearch = (d.foodType || '').toLowerCase().includes(donationSearch.toLowerCase()) ||
-      (d.donorName || '').toLowerCase().includes(donationSearch.toLowerCase()) ||
-      (d.ngoName || '').toLowerCase().includes(donationSearch.toLowerCase()) ||
-      (d.address || '').toLowerCase().includes(donationSearch.toLowerCase());
-    const matchesStatus = selectedDonationStatus === 'all' || d.status === selectedDonationStatus;
+  const filteredDonations = (donationsList ?? []).filter(d => {
+    const matchesSearch = (d?.foodType ?? '').toLowerCase().includes((donationSearch ?? '').toLowerCase()) ||
+      (d?.donorName ?? '').toLowerCase().includes((donationSearch ?? '').toLowerCase()) ||
+      (d?.ngoName ?? '').toLowerCase().includes((donationSearch ?? '').toLowerCase()) ||
+      (d?.address ?? '').toLowerCase().includes((donationSearch ?? '').toLowerCase());
+    const matchesStatus = selectedDonationStatus === 'all' || d?.status === selectedDonationStatus;
     return matchesSearch && matchesStatus;
   });
 
-  const filteredLogs = logsList.filter(l =>
-    (l.action || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-    (l.details || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-    (l.performedBy || '').toLowerCase().includes(logSearch.toLowerCase())
+  const filteredLogs = (logsList ?? []).filter(l =>
+    (l?.action ?? '').toLowerCase().includes((logSearch ?? '').toLowerCase()) ||
+    (l?.details ?? '').toLowerCase().includes((logSearch ?? '').toLowerCase()) ||
+    (l?.performedBy ?? '').toLowerCase().includes((logSearch ?? '').toLowerCase())
   );
 
+  const getInitials = (name: string) => {
+    if (!name) return 'A';
+    return (name ?? '').split(' ').filter(Boolean).map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase();
+  };
+
+  const MENU_ITEMS = [
+    { key: 'analytics', label: 'Dashboard', icon: BarChart2 },
+    { key: 'users', label: 'User Directory', icon: Users },
+    { key: 'donations', label: 'Donation Orders', icon: CheckCircle },
+    { key: 'reports', label: 'Reports Centre', icon: FileText },
+    { key: 'logs', label: 'System Logs', icon: Clipboard },
+  ];
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header Banner */}
-      <View style={[styles.navBar, { borderBottomColor: theme.colors.border }]}>
-        <View>
-          <Text style={[styles.welcomeText, { color: theme.colors.textSecondary }]}>System Administrator</Text>
-          <Text style={[styles.nameText, { color: theme.colors.text }]} numberOfLines={1}>
-            {user?.name || 'Administrator'}
-          </Text>
-        </View>
-
-        <View style={styles.rightActions}>
-          <TouchableOpacity
-            id="btn-toggle-theme"
-            style={[styles.circleBtn, { backgroundColor: theme.colors.card }]}
-            onPress={() => dispatch(toggleTheme())}
-          >
-            {theme.dark ? <Sun size={18} color={theme.colors.warning} /> : <Moon size={18} color={theme.colors.primary} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            id="btn-logout"
-            style={[styles.circleBtn, { backgroundColor: theme.colors.card }]}
-            onPress={handleLogout}
-          >
-            <LogOut size={18} color={theme.colors.error} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Tabs Layout */}
-      <View style={[styles.tabsRow, { borderColor: theme.colors.border }]}>
+    <View style={styles.appContainer}>
+      {/* Absolute overlay backdrop to close active dropdowns on click outside */}
+      {(showNotifications || showProfileMenu) && (
         <TouchableOpacity
-          id="tab-analytics"
-          style={[styles.tab, activeTab === 'analytics' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }]}
-          onPress={() => setActiveTab('analytics')}
-        >
-          <BarChart size={16} color={activeTab === 'analytics' ? theme.colors.primary : theme.colors.textSecondary} />
-          <Text style={[styles.tabText, { color: activeTab === 'analytics' ? theme.colors.primary : theme.colors.textSecondary }]}>
-            Analytics
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          id="tab-users"
-          style={[styles.tab, activeTab === 'users' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }]}
-          onPress={() => setActiveTab('users')}
-        >
-          <Users size={16} color={activeTab === 'users' ? theme.colors.primary : theme.colors.textSecondary} />
-          <Text style={[styles.tabText, { color: activeTab === 'users' ? theme.colors.primary : theme.colors.textSecondary }]}>
-            Users
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          id="tab-donations"
-          style={[styles.tab, activeTab === 'donations' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }]}
-          onPress={() => setActiveTab('donations')}
-        >
-          <CheckCircle size={16} color={activeTab === 'donations' ? theme.colors.primary : theme.colors.textSecondary} />
-          <Text style={[styles.tabText, { color: activeTab === 'donations' ? theme.colors.primary : theme.colors.textSecondary }]}>
-            Donations
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          id="tab-reports"
-          style={[styles.tab, activeTab === 'reports' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }]}
-          onPress={() => setActiveTab('reports')}
-        >
-          <FileText size={16} color={activeTab === 'reports' ? theme.colors.primary : theme.colors.textSecondary} />
-          <Text style={[styles.tabText, { color: activeTab === 'reports' ? theme.colors.primary : theme.colors.textSecondary }]}>
-            Reports
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          id="tab-logs"
-          style={[styles.tab, activeTab === 'logs' && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }]}
-          onPress={() => setActiveTab('logs')}
-        >
-          <Clipboard size={16} color={activeTab === 'logs' ? theme.colors.primary : theme.colors.textSecondary} />
-          <Text style={[styles.tabText, { color: activeTab === 'logs' ? theme.colors.primary : theme.colors.textSecondary }]}>
-            Logs
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading && (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+          style={styles.absoluteFillBackdrop}
+          activeOpacity={1}
+          onPress={() => {
+            setShowNotifications(false);
+            setShowProfileMenu(false);
+          }}
+        />
       )}
-
-      {!loading && (
-        <ScrollView contentContainerStyle={styles.content}>
-          {/* TAB 1: ANALYTICS */}
-          {activeTab === 'analytics' && stats && charts && (
-            <View>
-              {/* Stat Counters Dashboard */}
-              <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 12 }]}>Key Performance Metrics</Text>
-              <View style={styles.statsGrid}>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.primary }]}>{stats.foodSavedKg} Kg</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Food Saved</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.accent }]}>{stats.totalBeneficiaries}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Beneficiaries Fed</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.info }]}>{stats.activeUsers}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Total Users</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats.totalDonations}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Total Donations</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.warning }]}>{stats.activeDonations}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Active Deliveries</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: '#059669' }]}>{stats.completedDonations}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Completed Posts</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.error }]}>{stats.cancelledDonations}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Cancelled Posts</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.primary }]}>{stats.totalDonors}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Donors Joined</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.accent }]}>{stats.totalNgos}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>NGOs Engaged</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: theme.colors.card }]}>
-                  <Text style={[styles.statValue, { color: theme.colors.info }]}>{stats.totalVolunteers}</Text>
-                  <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Volunteers Online</Text>
-                </View>
-              </View>
-
-              {/* Charts Display Grid */}
-              <Text style={[styles.sectionTitle, { color: theme.colors.text, marginVertical: 14 }]}>Analytical Visuals</Text>
-
-              {/* Chart 1: Donation Trends */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>Donation Trends (Posted)</Text>
-                <View style={styles.monthlyTrendRow}>
-                  {charts.monthlyTrends.map((t: any) => (
-                    <View key={t.month} style={styles.trendCol}>
-                      <View style={[styles.trendBar, { height: Math.max(10, t.count * 10), backgroundColor: theme.colors.primary }]} />
-                      <Text style={[styles.trendVal, { color: theme.colors.text }]}>{t.count}</Text>
-                      <Text style={[styles.trendLabel, { color: theme.colors.textSecondary }]}>{t.month}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Chart 2: Monthly completed volume */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>Monthly Donations (Completed Volume)</Text>
-                <View style={styles.monthlyTrendRow}>
-                  {getMonthlyCompleted().map((t: any) => (
-                    <View key={t.month} style={styles.trendCol}>
-                      <View style={[styles.trendBar, { height: Math.max(10, t.count * 12), backgroundColor: '#059669' }]} />
-                      <Text style={[styles.trendVal, { color: theme.colors.text }]}>{t.count}</Text>
-                      <Text style={[styles.trendLabel, { color: theme.colors.textSecondary }]}>{t.month}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Chart 3: Food Category Distribution */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>Food Category Distribution</Text>
-                {charts.categories.map((c: any) => {
-                  const maxCount = Math.max(...charts.categories.map((x: any) => x.count), 1);
-                  const barPercent = Math.max(10, Math.round((c.count / maxCount) * 80));
-                  return (
-                    <View key={c.category} style={styles.chartBarRow}>
-                      <Text style={[styles.barLabel, { color: theme.colors.text }]} numberOfLines={1}>
-                        {c.category}
-                      </Text>
-                      <View style={styles.barWrapper}>
-                        <View style={[styles.barColorFill, { width: `${barPercent}%`, backgroundColor: theme.colors.accent }]} />
-                        <Text style={[styles.barVal, { color: theme.colors.textSecondary }]}>{c.count}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-
-              {/* Chart 4: User Growth */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>User Growth Profile</Text>
-                <View style={styles.monthlyTrendRow}>
-                  {getUserGrowth().map((t: any) => (
-                    <View key={t.month} style={styles.trendCol}>
-                      <View style={[styles.trendBar, { height: Math.max(10, t.count * 10), backgroundColor: theme.colors.info }]} />
-                      <Text style={[styles.trendVal, { color: theme.colors.text }]}>{t.count}</Text>
-                      <Text style={[styles.trendLabel, { color: theme.colors.textSecondary }]}>{t.month}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Chart 5: NGO Performance */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>NGO Deliveries Performance</Text>
-                {charts.ngoPerformance.length === 0 ? (
-                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', marginVertical: 10 }}>
-                    No NGO completions logged yet.
-                  </Text>
-                ) : (
-                  charts.ngoPerformance.map((c: any) => {
-                    const maxCount = Math.max(...charts.ngoPerformance.map((x: any) => x.completedCount), 1);
-                    const barPercent = Math.max(10, Math.round((c.completedCount / maxCount) * 80));
-                    return (
-                      <View key={c.ngo} style={styles.chartBarRow}>
-                        <Text style={[styles.barLabel, { color: theme.colors.text }]} numberOfLines={1}>
-                          {c.ngo}
-                        </Text>
-                        <View style={styles.barWrapper}>
-                          <View style={[styles.barColorFill, { width: `${barPercent}%`, backgroundColor: '#4CAF50' }]} />
-                          <Text style={[styles.barVal, { color: theme.colors.textSecondary }]}>{c.completedCount}</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-
-              {/* Chart 6: Volunteer Performance */}
-              <View style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.chartTitle, { color: theme.colors.text }]}>Volunteer Leaderboard Performance</Text>
-                {getVolunteerPerformance().length === 0 ? (
-                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', marginVertical: 10 }}>
-                    No volunteer activity scores.
-                  </Text>
-                ) : (
-                  getVolunteerPerformance().map((v: any) => {
-                    const maxCount = Math.max(...getVolunteerPerformance().map((x: any) => x.score), 1);
-                    const barPercent = Math.max(10, Math.round((v.score / maxCount) * 80));
-                    return (
-                      <View key={v.name} style={styles.chartBarRow}>
-                        <Text style={[styles.barLabel, { color: theme.colors.text }]} numberOfLines={1}>
-                          {v.name}
-                        </Text>
-                        <View style={styles.barWrapper}>
-                          <View style={[styles.barColorFill, { width: `${barPercent}%`, backgroundColor: theme.colors.primary }]} />
-                          <Text style={[styles.barVal, { color: theme.colors.textSecondary }]}>{v.score} pts</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
+      {/* 1. COLLAPSIBLE SIDEBAR (For Desktop Viewports) */}
+      {isDesktop && (
+        <View style={[styles.sidebar, sidebarCollapsed && styles.sidebarCollapsed]}>
+          <View style={styles.sidebarBrand}>
+            <View style={styles.brandIconCircle}>
+              <Heart size={16} color="#FFFFFF" />
             </View>
-          )}
+            {!sidebarCollapsed && <Text style={styles.brandText}>FoodReach</Text>}
+          </View>
 
-          {/* TAB 2: USER DIRECTORY */}
-          {activeTab === 'users' && (
-            <View>
-              {/* Search and Filters */}
-              <View style={[styles.searchBox, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                <Search size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  id="input-user-search"
-                  style={[styles.searchInput, { color: theme.colors.text }]}
-                  placeholder="Search directory by name, email, phone..."
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={userSearch}
-                  onChangeText={setUserSearch}
-                />
-              </View>
-
-              <View style={styles.filterRow}>
-                {['all', 'donor', 'ngo', 'volunteer'].map((role) => (
-                  <TouchableOpacity
-                    key={role}
-                    style={[
-                      styles.filterBadge,
-                      { backgroundColor: selectedUserRole === role ? theme.colors.primary : theme.colors.card }
-                    ]}
-                    onPress={() => setSelectedUserRole(role as any)}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: selectedUserRole === role ? '#FFF' : theme.colors.textSecondary }}>
-                      {role.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <FlatList
-                data={filteredUsers}
-                keyExtractor={(item) => item.id || item._id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.userListItem, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                    <View style={styles.userHeader}>
-                      <Text style={[styles.userName, { color: theme.colors.text }]}>{item.name}</Text>
-                      <View style={[styles.roleBadge, { backgroundColor: theme.colors.primary + '1F' }]}>
-                        <Text style={[styles.roleText, { color: theme.colors.primary }]}>{item.role.toUpperCase()}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>✉️ {item.email}</Text>
-                    <Text style={[styles.userContact, { color: theme.colors.textSecondary }]}>📞 {item.contactNumber}</Text>
-                    <Text style={[styles.userContact, { color: theme.colors.textSecondary }]} numberOfLines={1}>📍 {item.address}</Text>
-
-                    <View style={styles.statusLine}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: item.isActive !== false ? theme.colors.primary : theme.colors.error }}>
-                        ● {item.isActive !== false ? 'Active Account' : 'Deactivated'}
-                      </Text>
-                    </View>
-
-                    {/* Action Panel */}
-                    <View style={styles.actionPanel}>
-                      <TouchableOpacity
-                        id={`btn-view-user-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
-                        onPress={() => setViewingUser(item)}
-                      >
-                        <Eye size={14} color={theme.colors.text} />
-                        <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>View</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        id={`btn-edit-user-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
-                        onPress={() => handleEditUserClick(item)}
-                      >
-                        <Edit size={14} color={theme.colors.text} />
-                        <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>Edit</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        id={`btn-toggle-user-${item.id || item._id}`}
-                        style={[
-                          styles.actionBtn,
-                          { backgroundColor: item.isActive !== false ? theme.colors.error + '1F' : theme.colors.primary + '1F' }
-                        ]}
-                        onPress={() => handleToggleUserActivation(item)}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: item.isActive !== false ? theme.colors.error : theme.colors.primary }}>
-                          {item.isActive !== false ? 'Deactivate' : 'Activate'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        id={`btn-delete-user-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.error + '1F' }]}
-                        onPress={() => handleDeleteUser(item)}
-                      >
-                        <Trash2 size={14} color={theme.colors.error} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              />
-            </View>
-          )}
-
-          {/* TAB 3: DONATION DIRECTORY */}
-          {activeTab === 'donations' && (
-            <View>
-              {/* Search and Filters */}
-              <View style={[styles.searchBox, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                <Search size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={[styles.searchInput, { color: theme.colors.text }]}
-                  placeholder="Search donations by food name, donor, NGO..."
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={donationSearch}
-                  onChangeText={setDonationSearch}
-                />
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalFilterScroll}>
-                {['all', 'Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered', 'Completed', 'Cancelled'].map((status) => (
-                  <TouchableOpacity
-                    key={status}
-                    style={[
-                      styles.filterBadge,
-                      { marginRight: 8, backgroundColor: selectedDonationStatus === status ? theme.colors.primary : theme.colors.card }
-                    ]}
-                    onPress={() => setSelectedDonationStatus(status)}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: selectedDonationStatus === status ? '#FFF' : theme.colors.textSecondary }}>
-                      {status}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <FlatList
-                data={filteredDonations}
-                keyExtractor={(item) => item.id || item._id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.userListItem, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                    <View style={styles.userHeader}>
-                      <Text style={[styles.userName, { color: theme.colors.text }]}>{item.foodType} ({item.quantity} {item.unit})</Text>
-                      <View style={[styles.roleBadge, { backgroundColor: '#3B82F61F' }]}>
-                        <Text style={{ fontSize: 8, fontWeight: '800', color: '#3B82F6' }}>{item.status.toUpperCase()}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>Donor: {item.donorName}</Text>
-                    <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>NGO Match: {item.ngoName || 'Unassigned'}</Text>
-                    <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>Volunteer: {item.volunteerName || 'Unassigned'}</Text>
-                    <Text style={[styles.userContact, { color: theme.colors.textSecondary }]} numberOfLines={1}>📍 Pickup: {item.address}</Text>
-
-                    {/* Action Panel */}
-                    <View style={styles.actionPanel}>
-                      <TouchableOpacity
-                        id={`btn-view-donation-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
-                        onPress={() => setViewingDonation(item)}
-                      >
-                        <Eye size={14} color={theme.colors.text} />
-                        <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>View</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        id={`btn-edit-donation-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
-                        onPress={() => handleOpenStatusEdit(item)}
-                      >
-                        <Edit size={14} color={theme.colors.text} />
-                        <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>Status</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        id={`btn-delete-donation-${item.id || item._id}`}
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.error + '1F' }]}
-                        onPress={() => handleDeleteDonation(item)}
-                      >
-                        <Trash2 size={14} color={theme.colors.error} />
-                        <Text style={[styles.actionBtnText, { color: theme.colors.error }]}>Delete</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              />
-            </View>
-          )}
-
-          {/* TAB 4: REPORTS GENERATOR */}
-          {activeTab === 'reports' && (
-            <View>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 12 }]}>Generate System Reports</Text>
-              
-              {/* Type Select buttons */}
-              <View style={styles.reportTabsRow}>
-                {[
-                  { key: 'donations', label: 'Donations' },
-                  { key: 'users', label: 'Users' },
-                  { key: 'ngos', label: 'NGOs' },
-                  { key: 'volunteers', label: 'Volunteers' },
-                  { key: 'monthly', label: 'Summary' }
-                ].map(item => (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={[
-                      styles.reportTypeBtn,
-                      { backgroundColor: selectedReportType === item.key ? theme.colors.primary : theme.colors.card }
-                    ]}
-                    onPress={() => setSelectedReportType(item.key as any)}
-                  >
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: selectedReportType === item.key ? '#FFF' : theme.colors.textSecondary }}>
+          <ScrollView style={styles.sidebarMenuScroll}>
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.sidebarMenuItem, isActive && styles.sidebarMenuItemActive]}
+                  onPress={() => setActiveTab(item.key as any)}
+                >
+                  <Icon size={20} color={isActive ? '#22C55E' : '#64748B'} />
+                  {!sidebarCollapsed && (
+                    <Text style={[styles.sidebarMenuItemText, isActive && styles.sidebarMenuItemTextActive]}>
                       {item.label}
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
-              {/* Month filter select */}
-              <View style={styles.reportControls}>
-                <Text style={{ fontSize: 11, color: theme.colors.text, fontWeight: '700' }}>Month Filter:</Text>
-                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                  {['All', 'Apr', 'May', 'Jun'].map(m => (
+          <TouchableOpacity
+            style={styles.sidebarCollapseBtn}
+            onPress={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} color="#64748B" /> : <ChevronLeft size={18} color="#64748B" />}
+            {!sidebarCollapsed && <Text style={styles.collapseText}>Collapse Sidebar</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 2. MAIN CONTENT CONTAINER */}
+      <View style={styles.mainContent}>
+        {/* Glassmorphism Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            {!isDesktop && (
+              <TouchableOpacity style={styles.mobileMenuBtn} onPress={() => setSidebarCollapsed(!sidebarCollapsed)}>
+                <Menu size={22} color="#1E293B" />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.headerDashboardTitle}>Admin Console</Text>
+          </View>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.headerActionCircle}
+              onPress={() => dispatch(toggleTheme())}
+            >
+              {theme?.dark ? <Sun size={18} color="#EAB308" /> : <Moon size={18} color="#22C55E" />}
+            </TouchableOpacity>
+
+            {/* Notifications Button */}
+            <View style={{ position: 'relative', zIndex: 10001 }}>
+              <TouchableOpacity
+                style={styles.headerActionCircle}
+                onPress={() => {
+                  setShowNotifications(prev => !prev);
+                  setShowProfileMenu(false);
+                }}
+              >
+                <Bell size={18} color="#64748B" />
+                <View style={styles.notificationDotBadge} />
+              </TouchableOpacity>
+
+              {showNotifications && (
+                <View style={styles.dropdownPanel}>
+                  <View style={styles.dropdownHeader}>
+                    <Text style={styles.dropdownHeaderTitle}>Recent Alerts</Text>
+                  </View>
+                  <ScrollView style={{ maxHeight: 200 }}>
+                    <View style={styles.notificationItem}>
+                      <Text style={styles.notificationText}>New donor Rajesh Kumar registered.</Text>
+                      <Text style={styles.notificationTime}>5m ago</Text>
+                    </View>
+                    <View style={styles.notificationItem}>
+                      <Text style={styles.notificationText}>Donation completed by Care NGO.</Text>
+                      <Text style={styles.notificationTime}>15m ago</Text>
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.headerQuickExportBtn} onPress={() => setActiveTab('reports')}>
+              <FileText size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.headerQuickExportText}>Export Report</Text>
+            </TouchableOpacity>
+
+            {/* User Profile Dropdown / Avatar Section */}
+            <View style={{ position: 'relative', zIndex: 10001 }}>
+              <TouchableOpacity
+                style={styles.headerUserAvatarWrapper}
+                onPress={() => {
+                  setShowProfileModal(true);
+                  setShowProfileMenu(false);
+                  setShowNotifications(false);
+                }}
+              >
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{getInitials(profileName)}</Text>
+                </View>
+                {isDesktop && (
+                  <View style={styles.headerUserTextDetails}>
+                    <Text style={styles.headerUserDisplayName}>{profileName} - System Admin</Text>
+                    <Text style={styles.headerUserRoleName}>System Admin</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {!isDesktop && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.mobileTabsScroll}
+            contentContainerStyle={styles.mobileTabsContainer}
+          >
+            {MENU_ITEMS.map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.mobileTabItem, activeTab === item.key && styles.mobileTabItemActive]}
+                onPress={() => setActiveTab(item.key as any)}
+              >
+                <Text style={[styles.mobileTabText, activeTab === item.key && styles.mobileTabTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text style={styles.loadingText}>Fetching admin analytics...</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+            {activeTab === 'analytics' && stats && charts && (
+              <View>
+                <View style={styles.metricsGrid}>
+                  <View style={[styles.metricCard, { borderLeftColor: '#22C55E' }]}>
+                    <View style={styles.metricCardHeader}>
+                      <Text style={styles.metricCardLabel}>Food Saved (Total)</Text>
+                      <View style={[styles.metricIconBox, { backgroundColor: '#DCFCE7' }]}>
+                        <TrendingUp size={16} color="#22C55E" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricCardValue}>{stats?.foodSavedKg ?? 0} Kg</Text>
+                    <Text style={styles.metricCardSub}>+12.4% from last month</Text>
+                  </View>
+
+                  <View style={[styles.metricCard, { borderLeftColor: '#3B82F6' }]}>
+                    <View style={styles.metricCardHeader}>
+                      <Text style={styles.metricCardLabel}>Beneficiaries Fed</Text>
+                      <View style={[styles.metricIconBox, { backgroundColor: '#DBEAFE' }]}>
+                        <Heart size={16} color="#3B82F6" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricCardValue}>{stats?.totalBeneficiaries ?? 0}</Text>
+                    <Text style={styles.metricCardSub}>Active NGO distributions</Text>
+                  </View>
+
+                  <View style={[styles.metricCard, { borderLeftColor: '#F97316' }]}>
+                    <View style={styles.metricCardHeader}>
+                      <Text style={styles.metricCardLabel}>Active Orders</Text>
+                      <View style={[styles.metricIconBox, { backgroundColor: '#FFEDD5' }]}>
+                        <Truck size={16} color="#F97316" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricCardValue}>{stats?.activeDonations ?? 0}</Text>
+                    <Text style={styles.metricCardSub}>Pending & assigned orders</Text>
+                  </View>
+
+                  <View style={[styles.metricCard, { borderLeftColor: '#8B5CF6' }]}>
+                    <View style={styles.metricCardHeader}>
+                      <Text style={styles.metricCardLabel}>Active Users</Text>
+                      <View style={[styles.metricIconBox, { backgroundColor: '#F3E8FF' }]}>
+                        <Users size={16} color="#8B5CF6" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricCardValue}>{stats?.activeUsers ?? 0}</Text>
+                    <Text style={styles.metricCardSub}>Donors, NGOs & Volunteers</Text>
+                  </View>
+                </View>
+
+                <View style={styles.dashboardGridRow}>
+                  <View style={styles.dashboardGridCol}>
+                    <View style={styles.panelCard}>
+                      <Text style={styles.panelCardTitle}>Food Category Share</Text>
+                      <Text style={styles.panelCardSubtitle}>Proportion of donations by weight category</Text>
+                      <View style={styles.progressContainer}>
+                        {(charts?.categories ?? []).map((c: any) => {
+                          const maxCount = Math.max(...(charts?.categories ?? []).map((x: any) => x?.count ?? 0), 1);
+                          const pct = ((c?.count ?? 0) / maxCount) * 100;
+                          return (
+                            <View key={c?.category ?? ''} style={styles.progressBarWrapper}>
+                              <View style={styles.progressBarMetaRow}>
+                                <Text style={styles.progressBarLabel}>{c?.category ?? ''}</Text>
+                                <Text style={styles.progressBarVal}>{c?.count ?? 0}</Text>
+                              </View>
+                              <View style={styles.progressBarOuter}>
+                                <View style={[styles.progressBarFill, { width: `${pct}%`, backgroundColor: '#22C55E' }]} />
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.dashboardGridCol}>
+                    <View style={styles.panelCard}>
+                      <Text style={styles.panelCardTitle}>NGO Performance</Text>
+                      <Text style={styles.panelCardSubtitle}>Completed deliveries by partner organization</Text>
+                      {!charts?.ngoPerformance || charts?.ngoPerformance?.length === 0 ? (
+                        <View style={styles.emptyStateBox}>
+                          <AlertCircle size={20} color="#64748B" />
+                          <Text style={styles.emptyStateText}>No NGO orders completed yet.</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.progressContainer}>
+                          {(charts?.ngoPerformance ?? []).map((ngo: any) => {
+                            const max = Math.max(...(charts?.ngoPerformance ?? []).map((x: any) => x?.completedCount ?? 0), 1);
+                            const pct = ((ngo?.completedCount ?? 0) / max) * 100;
+                            return (
+                              <View key={ngo?.ngo ?? ''} style={styles.progressBarWrapper}>
+                                <View style={styles.progressBarMetaRow}>
+                                  <Text style={styles.progressBarLabel}>{ngo?.ngo ?? ''}</Text>
+                                  <Text style={styles.progressBarVal}>{ngo?.completedCount ?? 0}</Text>
+                                </View>
+                                <View style={styles.progressBarOuter}>
+                                  <View style={[styles.progressBarFill, { width: `${pct}%`, backgroundColor: '#3B82F6' }]} />
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.dashboardGridRow}>
+                  <View style={[styles.dashboardGridCol, { flex: 1.5 }]}>
+                    <View style={styles.panelCard}>
+                      <Text style={styles.panelCardTitle}>Recent Donations</Text>
+                      <Text style={styles.panelCardSubtitle}>Latest food donations listed on FoodReach</Text>
+                      <View style={{ marginTop: 12 }}>
+                        {(donationsList ?? []).slice(0, 4).map((d: any) => (
+                          <View key={d?.id || d?._id} style={styles.recentDonationItemRow}>
+                            <View style={styles.donationAvatarContainer}>
+                              <Text style={styles.donationAvatarText}>{(d?.foodType ?? 'Food').charAt(0)}</Text>
+                            </View>
+                            <View style={styles.recentDonationDetails}>
+                              <Text style={styles.recentDonationTitle}>{d?.foodType ?? 'Food Item'}</Text>
+                              <Text style={styles.recentDonationSubtitle}>Qty: {d?.quantity ?? 0} {d?.unit ?? ''} • {d?.donorName ?? ''}</Text>
+                            </View>
+                            <View style={[styles.statusBadgeGreen, d?.status === 'Cancelled' && styles.statusBadgeRed, d?.status === 'Pending' && styles.statusBadgeYellow]}>
+                              <Text style={styles.statusBadgeText}>{d?.status ?? 'Pending'}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.dashboardGridCol}>
+                    <View style={styles.panelCard}>
+                      <Text style={styles.panelCardTitle}>Top Volunteers</Text>
+                      <Text style={styles.panelCardSubtitle}>Volunteers leading delivery score metrics</Text>
+                      <View style={{ marginTop: 12 }}>
+                        {(getVolunteerPerformance() ?? []).map((v: any, index: number) => (
+                          <View key={v?.name ?? ''} style={styles.leaderboardItemRow}>
+                            <View style={styles.leaderboardBadge}>
+                              <Text style={styles.leaderboardBadgeText}>#{index + 1}</Text>
+                            </View>
+                            <View style={styles.leaderboardInfo}>
+                              <Text style={styles.leaderboardName}>{v?.name ?? ''}</Text>
+                              <Text style={styles.leaderboardScore}>{v?.score ?? 0} Points</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'users' && (
+              <View style={styles.panelCard}>
+                <Text style={styles.panelCardTitle}>User Account Directory</Text>
+                <Text style={styles.panelCardSubtitle}>Manage active donors, partner NGOs, and logistics volunteers</Text>
+
+                <View style={styles.directoryControlsRow}>
+                  <View style={styles.searchBarContainer}>
+                    <Search size={16} color="#64748B" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={styles.directorySearchInput}
+                      placeholder="Search accounts..."
+                      placeholderTextColor="#94A3B8"
+                      value={userSearch}
+                      onChangeText={setUserSearch}
+                    />
+                  </View>
+                  <View style={styles.directoryBadgeRow}>
+                    {['all', 'donor', 'ngo', 'volunteer'].map((r) => (
+                      <TouchableOpacity
+                        key={r}
+                        style={[styles.directoryRoleChip, selectedUserRole === r && styles.directoryRoleChipActive]}
+                        onPress={() => setSelectedUserRole(r as any)}
+                      >
+                        <Text style={[styles.directoryRoleText, selectedUserRole === r && styles.directoryRoleTextActive]}>
+                          {r.toUpperCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={{ marginTop: 12 }}>
+                  {(filteredUsers ?? []).map((item) => (
+                    <View key={item?.id || item?._id} style={styles.directoryItemCard}>
+                      <View style={styles.directoryItemHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={styles.avatarCircleSmall}>
+                            <Text style={styles.avatarTextSmall}>{getInitials(item?.name ?? 'Admin')}</Text>
+                          </View>
+                          <View style={{ marginLeft: 10 }}>
+                            <Text style={styles.directoryItemName}>{item?.name ?? ''}</Text>
+                            <Text style={styles.directoryItemMeta}>{item?.email ?? ''} • {item?.contactNumber ?? ''}</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.roleBadgeGreen, item?.role === 'ngo' && styles.roleBadgeBlue, item?.role === 'volunteer' && styles.roleBadgePurple]}>
+                          <Text style={styles.roleBadgeText}>{(item?.role ?? '').toUpperCase()}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.directoryItemDetailsRow}>
+                        <MapPin size={12} color="#64748B" style={{ marginRight: 4 }} />
+                        <Text style={styles.directoryItemAddressText} numberOfLines={1}>{item?.address ?? ''}</Text>
+                      </View>
+
+                      <View style={styles.directoryItemFooter}>
+                        <View style={styles.statusIndicatorRow}>
+                          <View style={[styles.statusDot, { backgroundColor: item?.isActive !== false ? '#22C55E' : '#EF4444' }]} />
+                          <Text style={styles.statusTextLabel}>{item?.isActive !== false ? 'Active' : 'Suspended'}</Text>
+                        </View>
+                        
+                        <View style={styles.directoryActionsGroup}>
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => setViewingUser(item)}>
+                            <Eye size={14} color="#64748B" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => handleEditUserClick(item)}>
+                            <Edit size={14} color="#22C55E" />
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.directoryStatusToggleBtn, { borderColor: item?.isActive !== false ? '#EF4444' : '#22C55E' }]}
+                            onPress={() => handleToggleUserActivation(item)}
+                          >
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: item?.isActive !== false ? '#EF4444' : '#22C55E' }}>
+                              {item?.isActive !== false ? 'Suspend' : 'Activate'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => handleDeleteUser(item)}>
+                            <Trash2 size={14} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'donations' && (
+              <View style={styles.panelCard}>
+                <Text style={styles.panelCardTitle}>Donation Orders Panel</Text>
+                <Text style={styles.panelCardSubtitle}>Track and edit statuses of food donation transfers</Text>
+
+                <View style={styles.directoryControlsRow}>
+                  <View style={styles.searchBarContainer}>
+                    <Search size={16} color="#64748B" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={styles.directorySearchInput}
+                      placeholder="Search donations..."
+                      placeholderTextColor="#94A3B8"
+                      value={donationSearch}
+                      onChangeText={setDonationSearch}
+                    />
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, height: 32 }}>
+                    {['all', 'Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered', 'Completed', 'Cancelled'].map((status) => (
+                      <TouchableOpacity
+                        key={status}
+                        style={[styles.directoryRoleChip, selectedDonationStatus === status && styles.directoryRoleChipActive, { marginRight: 6 }]}
+                        onPress={() => setSelectedDonationStatus(status)}
+                      >
+                        <Text style={[styles.directoryRoleText, selectedDonationStatus === status && styles.directoryRoleTextActive]}>
+                          {status}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View style={{ marginTop: 12 }}>
+                  {(filteredDonations ?? []).map((item) => (
+                    <View key={item?.id || item?._id} style={styles.directoryItemCard}>
+                      <View style={styles.directoryItemHeader}>
+                        <View>
+                          <Text style={styles.directoryItemName}>{item?.foodType ?? 'Food Listing'}</Text>
+                          <Text style={styles.directoryItemMeta}>Qty: {item?.quantity ?? 0} {item?.unit ?? ''} • Donor: {item?.donorName ?? ''}</Text>
+                        </View>
+                        <View style={[styles.statusBadgeGreen, item?.status === 'Cancelled' && styles.statusBadgeRed, item?.status === 'Pending' && styles.statusBadgeYellow]}>
+                          <Text style={styles.statusBadgeText}>{item?.status ?? 'Pending'}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.donationDetailsMetadataList}>
+                        <Text style={styles.donationDetailsMetadataItem}>🏢 NGO Partner: {item?.ngoName || 'Not matched'}</Text>
+                        <Text style={styles.donationDetailsMetadataItem}>🚴 Logistics Volunteer: {item?.volunteerName || 'Not claimed'}</Text>
+                        <Text style={styles.donationDetailsMetadataItem}>📍 Address: {item?.address ?? ''}</Text>
+                      </View>
+
+                      <View style={styles.directoryItemFooter}>
+                        <Text style={styles.timestampText}>Posted: {item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                        
+                        <View style={styles.directoryActionsGroup}>
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => setViewingDonation(item)}>
+                            <Eye size={14} color="#64748B" />
+                            <Text style={styles.directoryActionLabel}>View</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => handleOpenStatusEdit(item)}>
+                            <Edit size={14} color="#22C55E" />
+                            <Text style={[styles.directoryActionLabel, { color: '#22C55E' }]}>Status</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.directoryActionBtn} onPress={() => handleDeleteDonation(item)}>
+                            <Trash2 size={14} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'reports' && (
+              <View style={styles.panelCard}>
+                <Text style={styles.panelCardTitle}>System Reports Hub</Text>
+                <Text style={styles.panelCardSubtitle}>Export structured audit records, metrics, and summaries</Text>
+
+                <View style={styles.reportTabsRow}>
+                  {[
+                    { key: 'donations', label: 'Donations' },
+                    { key: 'users', label: 'Platform Users' },
+                    { key: 'ngos', label: 'NGO Partners' },
+                    { key: 'volunteers', label: 'Volunteers' },
+                    { key: 'monthly', label: 'Aggregate Summary' }
+                  ].map(item => (
                     <TouchableOpacity
-                      key={m}
-                      style={[
-                        styles.filterBadge,
-                        { backgroundColor: selectedReportMonth === m ? theme.colors.primary : theme.colors.card }
-                      ]}
-                      onPress={() => setSelectedReportMonth(m)}
+                      key={item.key}
+                      style={[styles.directoryRoleChip, selectedReportType === item.key && styles.directoryRoleChipActive]}
+                      onPress={() => setSelectedReportType(item.key as any)}
                     >
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: selectedReportMonth === m ? '#FFF' : theme.colors.textSecondary }}>
-                        {m}
+                      <Text style={[styles.directoryRoleText, selectedReportType === item.key && styles.directoryRoleTextActive]}>
+                        {item.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
 
-              {/* Action Buttons Row */}
-              <View style={styles.exportActionsRow}>
-                <TouchableOpacity
-                  id="btn-export-csv"
-                  style={[styles.exportBtn, { backgroundColor: theme.colors.card }]}
-                  onPress={handleExportCSV}
-                >
-                  <Download size={14} color={theme.colors.primary} />
-                  <Text style={[styles.exportBtnText, { color: theme.colors.text }]}>CSV Export</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  id="btn-export-excel"
-                  style={[styles.exportBtn, { backgroundColor: theme.colors.card }]}
-                  onPress={handleExportExcel}
-                >
-                  <FileText size={14} color='#1D6F42' />
-                  <Text style={[styles.exportBtnText, { color: theme.colors.text }]}>Excel Workbook</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  id="btn-print-pdf"
-                  style={[styles.exportBtn, { backgroundColor: theme.colors.card }]}
-                  onPress={handlePrintPDF}
-                >
-                  <Printer size={14} color={theme.colors.accent} />
-                  <Text style={[styles.exportBtnText, { color: theme.colors.text }]}>Print/Save PDF</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Preview table */}
-              <View style={[styles.previewContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                <Text style={[styles.previewTitle, { color: theme.colors.text }]}>Report Output Preview ({reportPreviewList.length} rows)</Text>
-                {reportPreviewList.length === 0 ? (
-                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', padding: 20 }}>
-                    No matching records found for the filters selected.
-                  </Text>
-                ) : (
-                  <ScrollView horizontal>
-                    <View>
-                      {/* Header line */}
-                      <View style={[styles.tableRow, { borderBottomColor: theme.colors.border }]}>
-                        {Object.keys(reportPreviewList[0]).map(k => (
-                          <Text key={k} style={[styles.tableHeaderCell, { color: theme.colors.textSecondary }]}>
-                            {k.toUpperCase()}
-                          </Text>
-                        ))}
-                      </View>
-                      {/* Body list */}
-                      <FlatList
-                        data={reportPreviewList}
-                        keyExtractor={(_, index) => `row_${index}`}
-                        scrollEnabled={false}
-                        renderItem={({ item }) => (
-                          <View style={[styles.tableRow, { borderBottomColor: theme.colors.border }]}>
-                            {Object.keys(item).map(k => (
-                              <Text key={k} style={[styles.tableCell, { color: theme.colors.text }]} numberOfLines={1}>
-                                {item[k] === null || item[k] === undefined ? 'N/A' : String(item[k])}
-                              </Text>
-                            ))}
-                          </View>
-                        )}
-                      />
-                    </View>
-                  </ScrollView>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* TAB 5: AUDIT LOGS */}
-          {activeTab === 'logs' && (
-            <View>
-              {/* Search bar */}
-              <View style={[styles.searchBox, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-                <Search size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={[styles.searchInput, { color: theme.colors.text }]}
-                  placeholder="Filter logs by operator, details, action..."
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={logSearch}
-                  onChangeText={setLogSearch}
-                />
-              </View>
-
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Audit Trails</Text>
-                <TouchableOpacity onPress={fetchAdminData} id="btn-refresh-logs">
-                  <RefreshCw size={14} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={filteredLogs}
-                keyExtractor={(item) => item.id || item._id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.logItem, { borderLeftColor: theme.colors.primary, backgroundColor: theme.colors.card }]}>
-                    <View style={styles.logMetaRow}>
-                      <Text style={[styles.logAction, { color: theme.colors.text }]}>{item.action}</Text>
-                      <Text style={[styles.logTime, { color: theme.colors.textSecondary }]}>
-                        {new Date(item.timestamp).toLocaleString()}
-                      </Text>
-                    </View>
-                    <Text style={[styles.logDetails, { color: theme.colors.textSecondary }]}>
-                      {item.details}
-                    </Text>
-                    <Text style={[styles.logOperator, { color: theme.colors.primary }]}>
-                      operator: {item.performedBy} ({item.role})
-                    </Text>
+                <View style={styles.reportSettingsContainer}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Calendar size={16} color="#64748B" />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>Month: </Text>
+                    {['All', 'Apr', 'May', 'Jun'].map(m => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.monthFilterChip, selectedReportMonth === m && styles.monthFilterChipActive]}
+                        onPress={() => setSelectedReportMonth(m)}
+                      >
+                        <Text style={[styles.monthFilterText, selectedReportMonth === m && styles.monthFilterTextActive]}>
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                )}
-              />
-            </View>
-          )}
-        </ScrollView>
-      )}
+
+                  <View style={styles.exportActionsContainer}>
+                    <TouchableOpacity style={styles.exportBtnAccent} onPress={handleExportCSV}>
+                      <Download size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.exportBtnAccentText}>CSV</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.exportBtnAccent, { backgroundColor: '#10B981' }]} onPress={handleExportExcel}>
+                      <FileText size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.exportBtnAccentText}>Excel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.exportBtnAccent, { backgroundColor: '#8B5CF6' }]} onPress={handlePrintPDF}>
+                      <Printer size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.exportBtnAccentText}>PDF Print</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.previewContainer}>
+                  <Text style={styles.previewTitle}>Report Data Preview ({reportPreviewList?.length ?? 0} rows)</Text>
+                  {!reportPreviewList || reportPreviewList.length === 0 ? (
+                    <View style={styles.emptyStateBox}>
+                      <AlertCircle size={20} color="#64748B" />
+                      <Text style={styles.emptyStateText}>No matching records found for current filters.</Text>
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                      <View>
+                        <View style={styles.previewTableHeader}>
+                          {(reportPreviewList?.[0] ? Object.keys(reportPreviewList[0]) : []).map(k => (
+                            <Text key={k} style={styles.previewTableHeaderCell}>{k.toUpperCase()}</Text>
+                          ))}
+                        </View>
+                        <FlatList
+                          data={reportPreviewList}
+                          keyExtractor={(item, index) => `preview_${index}`}
+                          scrollEnabled={false}
+                          renderItem={({ item }) => (
+                            <View style={styles.previewTableRow}>
+                              {(item ? Object.keys(item) : []).map(k => (
+                                <Text key={k} style={styles.previewTableCell} numberOfLines={1}>
+                                  {item?.[k] === null || item?.[k] === undefined ? 'N/A' : String(item[k])}
+                                </Text>
+                              ))}
+                            </View>
+                          )}
+                        />
+                      </View>
+                    </ScrollView>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'logs' && (
+              <View style={styles.panelCard}>
+                <View style={styles.panelCardHeaderRow}>
+                  <View>
+                    <Text style={styles.panelCardTitle}>Audit Logs Database</Text>
+                    <Text style={styles.panelCardSubtitle}>Immutable history of administrator and operator actions</Text>
+                  </View>
+                  <TouchableOpacity style={styles.refreshBtnCircle} onPress={fetchAdminData}>
+                    <RefreshCw size={14} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.searchBarContainer}>
+                  <Search size={16} color="#64748B" style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={styles.directorySearchInput}
+                    placeholder="Search logs by action details..."
+                    placeholderTextColor="#94A3B8"
+                    value={logSearch}
+                    onChangeText={setLogSearch}
+                  />
+                </View>
+
+                <View style={{ marginTop: 12 }}>
+                  {(filteredLogs ?? []).map((item) => (
+                    <View key={item?.id || item?._id} style={styles.auditLogItemCard}>
+                      <View style={styles.auditLogHeader}>
+                        <Text style={styles.auditLogActionTitle}>{item?.action ?? ''}</Text>
+                        <Text style={styles.auditLogTime}>{item?.timestamp ? new Date(item.timestamp).toLocaleString() : ''}</Text>
+                      </View>
+                      <Text style={styles.auditLogDetails}>{item?.details ?? ''}</Text>
+                      <View style={styles.auditLogOperatorMeta}>
+                        <View style={styles.operatorBullet} />
+                        <Text style={styles.auditLogOperatorText}>Operator: {item?.performedBy ?? ''} ({item?.role ?? ''})</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </View>
 
       {/* OVERLAY MODAL: VIEW USER DETAILS */}
       {viewingUser && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>User Record Details</Text>
+              <Text style={styles.modalTitle}>User Account Record</Text>
               <TouchableOpacity onPress={() => setViewingUser(null)}>
-                <X size={20} color={theme.colors.text} />
+                <X size={20} color="#1E293B" />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ marginVertical: 12 }}>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Full Name:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingUser.name}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Full Name</Text>
+                <Text style={styles.modalDetailValue}>{viewingUser?.name ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Email ID:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingUser.email}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Email Address</Text>
+                <Text style={styles.modalDetailValue}>{viewingUser?.email ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>System Role:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.primary, fontWeight: '800' }]}>{viewingUser.role.toUpperCase()}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>System Role</Text>
+                <Text style={[styles.modalDetailValue, { color: '#22C55E', fontWeight: '700' }]}>{(viewingUser?.role ?? '').toUpperCase()}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Contact Phone:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingUser.contactNumber}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Phone Number</Text>
+                <Text style={styles.modalDetailValue}>{viewingUser?.contactNumber ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Full Address:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingUser.address}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Full Address</Text>
+                <Text style={styles.modalDetailValue}>{viewingUser?.address ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Account Status:</Text>
-                <Text style={[styles.detailVal, { color: viewingUser.isActive !== false ? theme.colors.primary : theme.colors.error }]}>
-                  {viewingUser.isActive !== false ? 'Active' : 'Inactive / Suspended'}
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Account Status</Text>
+                <Text style={[styles.modalDetailValue, { color: viewingUser?.isActive !== false ? '#22C55E' : '#EF4444', fontWeight: '700' }]}>
+                  {viewingUser?.isActive !== false ? 'Active' : 'Suspended'}
                 </Text>
               </View>
-              {viewingUser.volunteerScore !== undefined && (
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Volunteer Score:</Text>
-                  <Text style={[styles.detailVal, { color: theme.colors.accent }]}>{viewingUser.volunteerScore} points</Text>
-                </View>
-              )}
             </ScrollView>
-            <TouchableOpacity
-              style={[styles.modalCloseBtn, { backgroundColor: theme.colors.primary }]}
-              onPress={() => setViewingUser(null)}
-            >
-              <Text style={{ color: '#FFF', fontWeight: '700' }}>Close</Text>
+            <TouchableOpacity style={styles.modalSubmitBtn} onPress={() => setViewingUser(null)}>
+              <Text style={styles.modalSubmitBtnText}>Close Record</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1219,82 +1414,105 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       {/* OVERLAY MODAL: EDIT USER DETAILS */}
       {editingUser && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Edit User Account</Text>
+              <Text style={styles.modalTitle}>Modify User Profile</Text>
               <TouchableOpacity onPress={() => setEditingUser(null)}>
-                <X size={20} color={theme.colors.text} />
+                <X size={20} color="#1E293B" />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ marginVertical: 12 }}>
-              {/* Name field */}
-              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Full Name</Text>
+              <Text style={styles.inputLabelField}>Full Name</Text>
               <TextInput
-                style={[styles.modalInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={styles.modalTextInputField}
                 value={userForm.name}
                 onChangeText={(val) => setUserForm(prev => ({ ...prev, name: val }))}
               />
-              {userFormErrors.name && <Text style={styles.errorHint}>{userFormErrors.name}</Text>}
+              {userFormErrors.name && <Text style={styles.errorTextHint}>{userFormErrors.name}</Text>}
 
-              {/* Email field */}
-              <Text style={[styles.inputLabel, { color: theme.colors.text, marginTop: 10 }]}>Email Address</Text>
+              <Text style={styles.inputLabelField}>Email Address</Text>
               <TextInput
-                style={[styles.modalInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={styles.modalTextInputField}
                 value={userForm.email}
                 onChangeText={(val) => setUserForm(prev => ({ ...prev, email: val }))}
-                keyboardType="email-address"
               />
-              {userFormErrors.email && <Text style={styles.errorHint}>{userFormErrors.email}</Text>}
+              {userFormErrors.email && <Text style={styles.errorTextHint}>{userFormErrors.email}</Text>}
 
-              {/* Contact number */}
-              <Text style={[styles.inputLabel, { color: theme.colors.text, marginTop: 10 }]}>Phone Number</Text>
+              <Text style={styles.inputLabelField}>Phone Number</Text>
               <TextInput
-                style={[styles.modalInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={styles.modalTextInputField}
                 value={userForm.contactNumber}
                 onChangeText={(val) => setUserForm(prev => ({ ...prev, contactNumber: val }))}
               />
-              {userFormErrors.contactNumber && <Text style={styles.errorHint}>{userFormErrors.contactNumber}</Text>}
+              {userFormErrors.contactNumber && <Text style={styles.errorTextHint}>{userFormErrors.contactNumber}</Text>}
 
-              {/* Address field */}
-              <Text style={[styles.inputLabel, { color: theme.colors.text, marginTop: 10 }]}>Address</Text>
+              <Text style={styles.inputLabelField}>Address Location</Text>
               <TextInput
-                style={[styles.modalInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={styles.modalTextInputField}
                 value={userForm.address}
                 onChangeText={(val) => setUserForm(prev => ({ ...prev, address: val }))}
               />
-              {userFormErrors.address && <Text style={styles.errorHint}>{userFormErrors.address}</Text>}
+              {userFormErrors.address && <Text style={styles.errorTextHint}>{userFormErrors.address}</Text>}
 
-              {/* Role Select Row */}
-              <Text style={[styles.inputLabel, { color: theme.colors.text, marginTop: 10 }]}>Role Type</Text>
-              <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+              <Text style={styles.inputLabelField}>Role Profile Type</Text>
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
                 {['donor', 'ngo', 'volunteer'].map(r => (
                   <TouchableOpacity
                     key={r}
-                    style={[
-                      styles.roleSelectBtn,
-                      { backgroundColor: userForm.role === r ? theme.colors.primary : theme.colors.surface }
-                    ]}
+                    style={[styles.directoryRoleChip, userForm.role === r && styles.directoryRoleChipActive, { flex: 1 }]}
                     onPress={() => setUserForm(prev => ({ ...prev, role: r }))}
                   >
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: userForm.role === r ? '#FFF' : theme.colors.textSecondary }}>
+                    <Text style={[styles.directoryRoleText, userForm.role === r && styles.directoryRoleTextActive]}>
                       {r.toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
-            <View style={styles.modalActionsRow}>
-              <TouchableOpacity
-                style={[styles.modalCloseBtn, { backgroundColor: theme.colors.border, flex: 1 }]}
-                onPress={() => setEditingUser(null)}
-              >
-                <Text style={{ color: theme.colors.textSecondary, fontWeight: '700' }}>Cancel</Text>
+            <View style={styles.modalActionsRowGroup}>
+              <TouchableOpacity style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9', flex: 1 }]} onPress={() => setEditingUser(null)}>
+                <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalCloseBtn, { backgroundColor: theme.colors.primary, flex: 1 }]}
-                onPress={handleSaveUser}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '700' }}>Save Changes</Text>
+              <TouchableOpacity style={[styles.modalSubmitBtn, { flex: 1 }]} onPress={handleSaveUser}>
+                <Text style={styles.modalSubmitBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* OVERLAY MODAL: CHANGE DONATION STATUS */}
+      {editingDonation && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Donation Progress</Text>
+              <TouchableOpacity onPress={() => setEditingDonation(null)}>
+                <X size={20} color="#1E293B" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ marginVertical: 12 }}>
+              <Text style={[styles.inputLabelField, { marginBottom: 8 }]}>Select State Transition:</Text>
+              <View style={{ gap: 6 }}>
+                {['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered', 'Completed', 'Cancelled'].map((status) => (
+                  <TouchableOpacity
+                    key={status}
+                    style={[styles.statusSelectBtnItem, donationStatusVal === status && styles.statusSelectBtnItemActive]}
+                    onPress={() => setDonationStatusVal(status)}
+                  >
+                    <Text style={[styles.statusSelectBtnText, donationStatusVal === status && styles.statusSelectBtnTextActive]}>
+                      {status}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <View style={styles.modalActionsRowGroup}>
+              <TouchableOpacity style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9', flex: 1 }]} onPress={() => setEditingDonation(null)}>
+                <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSubmitBtn, { flex: 1 }]} onPress={handleSaveDonationStatus}>
+                <Text style={styles.modalSubmitBtnText}>Commit Progress</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1304,587 +1522,1321 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       {/* OVERLAY MODAL: VIEW DONATION DETAILS */}
       {viewingDonation && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Donation Post Details</Text>
+              <Text style={styles.modalTitle}>Donation Info</Text>
               <TouchableOpacity onPress={() => setViewingDonation(null)}>
-                <X size={20} color={theme.colors.text} />
+                <X size={20} color="#1E293B" />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ marginVertical: 12 }}>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Food Type:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text, fontWeight: '700' }]}>{viewingDonation.foodType}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Food Item Type</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.foodType ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Quantity:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingDonation.quantity} {viewingDonation.unit}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Total Quantity</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.quantity ?? 0} {viewingDonation?.unit ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Posting Status:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.primary, fontWeight: '800' }]}>{viewingDonation.status.toUpperCase()}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Order Status</Text>
+                <Text style={[styles.modalDetailValue, { color: '#22C55E', fontWeight: '700' }]}>{(viewingDonation?.status ?? '').toUpperCase()}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Donor Name:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingDonation.donorName}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Donor Account</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.donorName ?? ''}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Assigned NGO:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingDonation.ngoName || 'Not Assigned'}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Matched NGO</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.ngoName || 'Unassigned'}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Assigned Volunteer:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingDonation.volunteerName || 'Not Claimed'}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Assigned Courier</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.volunteerName || 'Not claimed'}</Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Pickup Address:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{viewingDonation.address}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Date Posted:</Text>
-                <Text style={[styles.detailVal, { color: theme.colors.text }]}>{new Date(viewingDonation.createdAt).toLocaleString()}</Text>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Pickup Address</Text>
+                <Text style={styles.modalDetailValue}>{viewingDonation?.address ?? ''}</Text>
               </View>
             </ScrollView>
-            <TouchableOpacity
-              style={[styles.modalCloseBtn, { backgroundColor: theme.colors.primary }]}
-              onPress={() => setViewingDonation(null)}
-            >
-              <Text style={{ color: '#FFF', fontWeight: '700' }}>Close</Text>
+            <TouchableOpacity style={styles.modalSubmitBtn} onPress={() => setViewingDonation(null)}>
+              <Text style={styles.modalSubmitBtnText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* OVERLAY MODAL: CHANGE DONATION STATUS */}
-      {editingDonation && (
+      {/* ==========================================
+          ADDED: PROFILE EDIT MODAL
+          ========================================== */}
+      {showProfileModal && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <View style={[styles.modalContent, { maxWidth: 500, maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Change Donation Status</Text>
-              <TouchableOpacity onPress={() => setEditingDonation(null)}>
-                <X size={20} color={theme.colors.text} />
+              <Text style={styles.modalTitle}>Administrator Profile Control</Text>
+              <TouchableOpacity onPress={() => { setShowProfileModal(false); setIsEditingProfile(false); }}>
+                <X size={20} color="#1E293B" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ marginVertical: 12 }}>
-              <Text style={[styles.inputLabel, { color: theme.colors.textSecondary, marginBottom: 8 }]}>Select Current State:</Text>
-              <View style={{ gap: 6 }}>
-                {['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered', 'Completed', 'Cancelled'].map((status) => (
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginVertical: 12 }}>
+              {/* Profile Avatar Frame */}
+              <View style={styles.profileAvatarFrame}>
+                <View style={styles.profileAvatarContainer}>
+                  <Text style={styles.profileAvatarChar}>{getInitials(profileName)}</Text>
+                </View>
+                {isEditingProfile && (
+                  <View style={styles.cameraIconBadge}>
+                    <Camera size={14} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+
+              {isEditingProfile ? (
+                // EDIT MODE
+                <View>
+                  <Text style={styles.inputLabelField}>Full Name</Text>
+                  <TextInput
+                    style={styles.modalTextInputField}
+                    value={profileName}
+                    onChangeText={setProfileName}
+                    placeholder="Enter full name"
+                  />
+
+                  <Text style={styles.inputLabelField}>Email (Read Only)</Text>
+                  <TextInput
+                    style={[styles.modalTextInputField, styles.disabledInputField]}
+                    value={user?.email || 'admin@foodreach.com'}
+                    editable={false}
+                  />
+
+                  <Text style={styles.inputLabelField}>Phone Number</Text>
+                  <TextInput
+                    style={styles.modalTextInputField}
+                    value={profilePhone}
+                    onChangeText={setProfilePhone}
+                    keyboardType="numeric"
+                    placeholder="Enter phone number digits"
+                  />
+
+                  <Text style={styles.inputLabelField}>Role (Read Only)</Text>
+                  <TextInput
+                    style={[styles.modalTextInputField, styles.disabledInputField]}
+                    value="System Admin"
+                    editable={false}
+                  />
+
+                  <Text style={styles.inputLabelField}>Organization (Optional)</Text>
+                  <TextInput
+                    style={styles.modalTextInputField}
+                    value={profileOrg}
+                    onChangeText={setProfileOrg}
+                    placeholder="Enter organization name"
+                  />
+
+                  <Text style={styles.inputLabelField}>Operating Address</Text>
+                  <TextInput
+                    style={styles.modalTextInputField}
+                    value={profileAddress}
+                    onChangeText={setProfileAddress}
+                    placeholder="Enter office address"
+                  />
+
+                  <Text style={styles.inputLabelField}>Bio / About (Max 200 chars)</Text>
+                  <TextInput
+                    style={[styles.modalTextInputField, { height: 60 }]}
+                    multiline
+                    numberOfLines={3}
+                    maxLength={200}
+                    value={profileBio}
+                    onChangeText={setProfileBio}
+                    placeholder="Describe bio profile info"
+                  />
+
+                  <Text style={styles.inputLabelField}>Profile Photo URL</Text>
+                  <TextInput
+                    style={styles.modalTextInputField}
+                    value={profilePicUrl}
+                    onChangeText={setProfilePicUrl}
+                    placeholder="Enter online picture URL path"
+                  />
+
+                  <View style={styles.modalActionsRowGroup}>
+                    <TouchableOpacity
+                      style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9', flex: 1 }]}
+                      onPress={() => setIsEditingProfile(false)}
+                    >
+                      <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalSubmitBtn, { flex: 1 }]}
+                      onPress={handleSaveAdminProfile}
+                    >
+                      <Text style={styles.modalSubmitBtnText}>Save Profile</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                // VIEW MODE
+                <View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Full Name</Text>
+                    <Text style={styles.modalDetailValue}>{profileName}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Email Address</Text>
+                    <Text style={styles.modalDetailValue}>{user?.email || 'admin@foodreach.com'}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Phone Number</Text>
+                    <Text style={styles.modalDetailValue}>{profilePhone}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>System Role</Text>
+                    <Text style={[styles.modalDetailValue, { color: '#22C55E', fontWeight: '800' }]}>System Admin</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Organization</Text>
+                    <Text style={styles.modalDetailValue}>{profileOrg || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Address</Text>
+                    <Text style={styles.modalDetailValue}>{profileAddress}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Bio / About</Text>
+                    <Text style={styles.modalDetailValue}>{profileBio || 'No bio entered.'}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Date Joined</Text>
+                    <Text style={styles.modalDetailValue}>{dateJoined}</Text>
+                  </View>
+
                   <TouchableOpacity
-                    key={status}
-                    style={[
-                      styles.statusSelectBtn,
-                      { backgroundColor: donationStatusVal === status ? theme.colors.primary : theme.colors.surface }
-                    ]}
-                    onPress={() => setDonationStatusVal(status)}
+                    style={[styles.modalSubmitBtn, { backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#22C55E' }]}
+                    onPress={() => setIsEditingProfile(true)}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: donationStatusVal === status ? '#FFF' : theme.colors.text }}>
-                      {status}
-                    </Text>
+                    <Text style={[styles.modalSubmitBtnText, { color: '#22C55E' }]}>Edit Profile Details</Text>
                   </TouchableOpacity>
-                ))}
+                </View>
+              )}
+
+              {/* Password Section */}
+              <View style={styles.passwordSectionWrapper}>
+                <Text style={styles.passwordSectionTitle}>Security Settings</Text>
+                
+                <Text style={styles.inputLabelField}>Current Password</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInputField}
+                    secureTextEntry={!showPasswords}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                  />
+                  <TouchableOpacity onPress={() => setShowPasswords(!showPasswords)} style={styles.passwordEyeBtn}>
+                    {showPasswords ? <EyeOff size={16} color="#64748B" /> : <Eye size={16} color="#64748B" />}
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.inputLabelField}>New Password</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInputField}
+                    secureTextEntry={!showPasswords}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Enter new password (min. 6 characters)"
+                  />
+                </View>
+
+                <Text style={styles.inputLabelField}>Confirm New Password</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInputField}
+                    secureTextEntry={!showPasswords}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                  />
+                </View>
+
+                <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleUpdatePassword}>
+                  <Text style={styles.modalSubmitBtnText}>Update Credentials</Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
-            <View style={styles.modalActionsRow}>
-              <TouchableOpacity
-                style={[styles.modalCloseBtn, { backgroundColor: theme.colors.border, flex: 1 }]}
-                onPress={() => setEditingDonation(null)}
-              >
-                <Text style={{ color: theme.colors.textSecondary, fontWeight: '700' }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalCloseBtn, { backgroundColor: theme.colors.primary, flex: 1 }]}
-                onPress={handleSaveDonationStatus}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '700' }}>Update State</Text>
-              </TouchableOpacity>
-            </View>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9' }]}
+              onPress={() => { setShowProfileModal(false); setIsEditingProfile(false); }}
+            >
+              <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Close Profile Panel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
+
+      {/* Snackbar Alert Banners */}
+      {snackbar.visible && (
+        <View style={[styles.snackbarContainer, snackbar.type === 'error' && styles.snackbarErrorBg]}>
+          <Text style={styles.snackbarText}>{snackbar.message}</Text>
+        </View>
+      )}
+
+      {/* Floating AI chat */}
+      <TouchableOpacity
+        style={styles.floatingAiFab}
+        onPress={() => navigate('AIChat')}
+      >
+        <MessageSquare size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 44,
-    paddingBottom: 20,
-    borderBottomWidth: 1
-  },
-  welcomeText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  nameText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 17,
-    fontWeight: '800',
-    maxWidth: 180,
-    letterSpacing: -0.2
-  },
-  rightActions: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  circleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    height: 50
-  },
-  tab: {
+  appContainer: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+  },
+  absoluteFillBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10000,
+    backgroundColor: 'transparent',
+  },
+  sidebar: {
+    width: 250,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
+    paddingVertical: 20,
+    justifyContent: 'space-between',
+  },
+  sidebarCollapsed: {
+    width: 70,
+  },
+  sidebarBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 24,
+  },
+  brandIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#22C55E',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4
   },
-  tabText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    fontWeight: '700'
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 60
-  },
-  sectionTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  brandText: {
     fontSize: 16,
     fontWeight: '800',
-    letterSpacing: -0.3
+    color: '#1E293B',
+    letterSpacing: -0.3,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20
-  },
-  statBox: {
-    width: '48%',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 1,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8
-  },
-  statValue: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5
-  },
-  statLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 10,
-    marginTop: 4,
-    fontWeight: '700'
-  },
-  chartCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    elevation: 1,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8
-  },
-  chartTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 13.5,
-    fontWeight: '800',
-    marginBottom: 12
-  },
-  chartBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  barLabel: {
-    width: '35%',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  barWrapper: {
+  sidebarMenuScroll: {
     flex: 1,
+  },
+  sidebarMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 12,
+    marginVertical: 2,
   },
-  barColorFill: {
-    height: 10,
-    borderRadius: 5
-  },
-  barVal: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 10,
-    fontWeight: '800'
-  },
-  monthlyTrendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 90,
-    paddingTop: 10
-  },
-  trendCol: {
-    alignItems: 'center'
-  },
-  trendBar: {
-    width: 24,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6
-  },
-  trendVal: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 2
-  },
-  trendLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 9,
-    marginTop: 3
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 14
-  },
-  searchInput: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    flex: 1,
-    fontSize: 13
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-    flexWrap: 'wrap'
-  },
-  filterBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent'
-  },
-  horizontalFilterScroll: {
-    marginBottom: 14,
-    paddingBottom: 4
-  },
-  userListItem: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8
-  },
-  userHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  userName: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 13.5,
-    fontWeight: '700'
-  },
-  roleBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 8
-  },
-  roleText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 9,
-    fontWeight: '900'
-  },
-  userEmail: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    marginBottom: 3
-  },
-  userContact: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    marginBottom: 3
-  },
-  statusLine: {
-    marginTop: 6,
-    marginBottom: 8
-  },
-  actionPanel: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.08)',
-    paddingTop: 10
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    flex: 1
-  },
-  actionBtnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    fontWeight: '700'
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14
-  },
-  logItem: {
+  sidebarMenuItemActive: {
+    backgroundColor: '#F0FDF4',
     borderLeftWidth: 3,
-    paddingLeft: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4
+    borderLeftColor: '#22C55E',
   },
-  logMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  logAction: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  logTime: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 9
-  },
-  logDetails: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 11,
-    marginTop: 3,
-    lineHeight: 14
-  },
-  logOperator: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 9,
+  sidebarMenuItemText: {
+    fontSize: 13,
     fontWeight: '600',
-    marginTop: 3
+    color: '#64748B',
   },
-  // Reports
-  reportTabsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-    flexWrap: 'wrap'
+  sidebarMenuItemTextActive: {
+    color: '#22C55E',
   },
-  reportTypeBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    elevation: 1
-  },
-  reportControls: {
-    marginBottom: 14
-  },
-  exportActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20
-  },
-  exportBtn: {
-    flex: 1,
+  sidebarCollapseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    elevation: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 10,
+  },
+  collapseText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  mainContent: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  header: {
+    height: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    zIndex: 1000,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mobileMenuBtn: {
+    padding: 6,
+  },
+  headerDashboardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerActionCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FAFBFD',
     borderWidth: 1,
-    borderColor: 'rgba(128,128,128,0.08)'
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  exportBtnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 10,
-    fontWeight: '700'
+  notificationDotBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
-  previewContainer: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1
+  headerQuickExportBtn: {
+    backgroundColor: '#22C55E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  previewTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  headerQuickExportText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    marginBottom: 10
   },
-  tableRow: {
+  headerUserAvatarWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 6,
+  },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  headerUserTextDetails: {
+    justifyContent: 'center',
+  },
+  headerUserDisplayName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerUserRoleName: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  dropdownPanel: {
+    position: 'absolute',
+    top: 48,
+    right: 0,
+    width: 240,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    zIndex: 9999,
+    elevation: 9999,
+    padding: 12,
+  },
+  dropdownHeader: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  dropdownHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  notificationItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  notificationText: {
+    fontSize: 11,
+    color: '#334155',
+  },
+  notificationTime: {
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  dropdownMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+  },
+  dropdownMenuItemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  mobileTabsScroll: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    flexGrow: 0,
+    height: 44,
+  },
+  mobileTabsContainer: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 16,
+  },
+  mobileTabItem: {
+    paddingVertical: 10,
+  },
+  mobileTabItemActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#22C55E',
+  },
+  mobileTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  mobileTabTextActive: {
+    color: '#22C55E',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 24,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: 220,
+    backgroundColor: '#FAFBFD',
+    borderRadius: 20,
+    padding: 20,
+    borderLeftWidth: 4,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  metricCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  metricCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  metricIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricCardValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.5,
+  },
+  metricCardSub: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  dashboardGridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    marginBottom: 20,
+  },
+  dashboardGridCol: {
+    flex: 1,
+    minWidth: 300,
+  },
+  panelCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  panelCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  refreshBtnCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panelCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.2,
+  },
+  panelCardSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  progressContainer: {
+    marginTop: 10,
+    gap: 14,
+  },
+  progressBarWrapper: {
+    flexDirection: 'column',
+  },
+  progressBarMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progressBarLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  progressBarVal: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  progressBarOuter: {
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  recentDonationItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  donationAvatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  donationAvatarText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  recentDonationDetails: {
+    flex: 1,
+  },
+  recentDonationTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  recentDonationSubtitle: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  statusBadgeGreen: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#DCFCE7',
+  },
+  statusBadgeRed: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusBadgeYellow: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803D',
+  },
+  leaderboardItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  leaderboardBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  leaderboardBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  leaderboardInfo: {
+    flex: 1,
+  },
+  leaderboardName: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  leaderboardScore: {
+    fontSize: 10.5,
+    color: '#D97706',
+    fontWeight: '600',
+  },
+  directoryControlsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 14,
+    marginBottom: 10,
+  },
+  searchBarContainer: {
+    flex: 1,
+    minWidth: 200,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  directorySearchInput: {
+    flex: 1,
+    fontSize: 12.5,
+    color: '#1E293B',
+  },
+  directoryBadgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  directoryRoleChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  directoryRoleChipActive: {
+    backgroundColor: '#22C55E',
+  },
+  directoryRoleText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  directoryRoleTextActive: {
+    color: '#FFFFFF',
+  },
+  directoryItemCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  directoryItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  avatarCircleSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  avatarTextSmall: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  directoryItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  directoryItemMeta: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  roleBadgeGreen: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#DCFCE7',
+  },
+  roleBadgeBlue: {
+    backgroundColor: '#DBEAFE',
+  },
+  roleBadgePurple: {
+    backgroundColor: '#F3E8FF',
+  },
+  roleBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '900',
+    color: '#22C55E',
+  },
+  directoryItemDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  directoryItemAddressText: {
+    fontSize: 11,
+    color: '#64748B',
+    flex: 1,
+  },
+  directoryItemFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 10,
+  },
+  statusIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  statusTextLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  directoryActionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  directoryActionBtn: {
+    padding: 6,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  directoryActionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  directoryStatusToggleBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  donationDetailsMetadataList: {
+    marginTop: 10,
+    gap: 4,
+  },
+  donationDetailsMetadataItem: {
+    fontSize: 11,
+    color: '#475569',
+  },
+  timestampText: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+  },
+  reportTabsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 16,
+  },
+  reportSettingsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  monthFilterChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+  },
+  monthFilterChipActive: {
+    backgroundColor: '#22C55E',
+  },
+  monthFilterText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  monthFilterTextActive: {
+    color: '#FFFFFF',
+  },
+  exportActionsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  exportBtnAccent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  exportBtnAccentText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  previewContainer: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+  },
+  previewTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 10,
+  },
+  previewTableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    paddingVertical: 8
+    borderBottomColor: '#E2E8F0',
+    paddingVertical: 8,
+    backgroundColor: '#F8FAFC',
   },
-  tableHeaderCell: {
-    width: 100,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  previewTableHeaderCell: {
+    width: 120,
     fontSize: 10,
     fontWeight: '800',
-    paddingHorizontal: 4
+    color: '#64748B',
+    paddingHorizontal: 6,
   },
-  tableCell: {
-    width: 100,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 10,
-    paddingHorizontal: 4
+  previewTableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingVertical: 8,
   },
-  // Custom Overlays Modals
+  previewTableCell: {
+    width: 120,
+    fontSize: 11,
+    color: '#334155',
+    paddingHorizontal: 6,
+  },
+  auditLogItemCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#22C55E',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  auditLogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  auditLogActionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  auditLogTime: {
+    fontSize: 9.5,
+    color: '#94A3B8',
+  },
+  auditLogDetails: {
+    fontSize: 11.5,
+    color: '#475569',
+    lineHeight: 15,
+  },
+  auditLogOperatorMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  operatorBullet: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#22C55E',
+    marginRight: 6,
+  },
+  auditLogOperatorText: {
+    fontSize: 9.5,
+    color: '#22C55E',
+    fontWeight: '600',
+  },
+  emptyStateBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 11,
+    color: '#64748B',
+  },
   modalOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    padding: 20
+    padding: 20,
   },
   modalContent: {
     width: '100%',
-    maxWidth: 480,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
+    maxWidth: 460,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#0F172A',
     shadowOpacity: 0.15,
-    shadowRadius: 20
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.08)',
-    paddingBottom: 10,
-    marginBottom: 10
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 12,
+    marginBottom: 12,
   },
   modalTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 14.5,
-    fontWeight: '800'
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
   },
-  detailRow: {
+  modalDetailRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.04)',
-    paddingBottom: 6
+    borderBottomColor: '#F8FAFC',
   },
-  detailLabel: {
+  modalDetailLabel: {
     width: '35%',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '700',
+    color: '#64748B',
   },
-  detailVal: {
+  modalDetailValue: {
     flex: 1,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    fontSize: 12
+    fontSize: 12,
+    color: '#1E293B',
   },
-  modalCloseBtn: {
+  modalSubmitBtn: {
+    backgroundColor: '#22C55E',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10
+    marginTop: 16,
   },
-  inputLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  modalSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  inputLabelField: {
     fontSize: 11,
     fontWeight: '700',
-    marginBottom: 6
+    color: '#475569',
+    marginBottom: 4,
+    marginTop: 10,
   },
-  modalInput: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    height: 40,
+  modalTextInputField: {
+    height: 38,
     borderWidth: 1,
-    borderRadius: 10,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
     paddingHorizontal: 10,
-    fontSize: 12
+    fontSize: 12,
+    color: '#1E293B',
+    backgroundColor: '#F8FAFC',
   },
-  errorHint: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
-    color: '#DC2626',
+  disabledInputField: {
+    backgroundColor: '#F1F5F9',
+    color: '#64748B',
+    borderColor: '#E2E8F0',
+  },
+  errorTextHint: {
     fontSize: 9,
+    color: '#EF4444',
     marginTop: 2,
-    fontWeight: '600'
   },
-  roleSelectBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalActionsRow: {
+  modalActionsRowGroup: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 16
+    marginTop: 16,
   },
-  statusSelectBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+  statusSelectBtnItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(128,128,128,0.08)'
-  }
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  statusSelectBtnItemActive: {
+    backgroundColor: '#22C55E',
+    borderColor: '#22C55E',
+  },
+  statusSelectBtnText: {
+    fontSize: 11.5,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  statusSelectBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  floatingAiFab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000000',
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    zIndex: 998,
+  },
+  // Profile styles
+  profileAvatarFrame: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginVertical: 16,
+  },
+  profileAvatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 2,
+    borderColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileAvatarChar: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  cameraIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: '40%',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  passwordSectionWrapper: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  passwordSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 10,
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    height: 38,
+    paddingHorizontal: 10,
+  },
+  passwordInputField: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1E293B',
+    height: '100%',
+  },
+  passwordEyeBtn: {
+    padding: 6,
+  },
+  snackbarContainer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    right: 24,
+    backgroundColor: '#1E293B',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    zIndex: 99999,
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  snackbarErrorBg: {
+    backgroundColor: '#EF4444',
+  },
+  snackbarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 });
 
 export default AdminDashboard;

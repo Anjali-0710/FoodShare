@@ -262,7 +262,7 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
       ) : filteredItems.length === 0 ? (
         <View style={styles.center}>
           <Bell size={48} color={theme.colors.textSecondary} style={{ marginBottom: 16, opacity: 0.5 }} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications found</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications available</Text>
           <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
             All caught up! Alerts will appear here when donation updates occur.
           </Text>

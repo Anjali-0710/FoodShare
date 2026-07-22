@@ -72,7 +72,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'usr_donor_1',
       name: 'Green Bakery & Cafe',
-      email: 'donor@foodshare.com',
+      email: 'donor@foodreach.com',
       passwordHash: commonPasswordHash,
       role: 'donor',
       contactNumber: '+919876543210',
@@ -85,7 +85,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'usr_ngo_1',
       name: 'Care & Feed Foundation NGO',
-      email: 'ngo@foodshare.com',
+      email: 'ngo@foodreach.com',
       passwordHash: commonPasswordHash,
       role: 'ngo',
       contactNumber: '+919999888877',
@@ -100,7 +100,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'usr_ngo_2',
       name: 'Hope Children Shelter',
-      email: 'hope@foodshare.com',
+      email: 'hope@foodreach.com',
       passwordHash: commonPasswordHash,
       role: 'ngo',
       contactNumber: '+919999111122',
@@ -115,7 +115,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'usr_volunteer_1',
       name: 'Rohan Sharma',
-      email: 'volunteer@foodshare.com',
+      email: 'volunteer@foodreach.com',
       passwordHash: commonPasswordHash,
       role: 'volunteer',
       contactNumber: '+919555444333',
@@ -129,7 +129,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'usr_volunteer_2',
       name: 'Anjali Gupta',
-      email: 'anjali@foodshare.com',
+      email: 'anjali@foodreach.com',
       passwordHash: commonPasswordHash,
       role: 'volunteer',
       contactNumber: '+919666777888',
@@ -318,7 +318,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'log_2',
       action: 'User Registered',
-      performedBy: 'ngo@foodshare.com',
+      performedBy: 'ngo@foodreach.com',
       role: 'ngo',
       details: 'New NGO account verified under name "Care & Feed Foundation NGO"',
       timestamp: new Date(now - 1.5 * oneDay)
@@ -326,7 +326,7 @@ export const seedMockDatabase = async () => {
     {
       id: 'log_3',
       action: 'Donation Completed',
-      performedBy: 'volunteer@foodshare.com',
+      performedBy: 'volunteer@foodreach.com',
       role: 'volunteer',
       details: 'Delivered 40Kg of Grocery Items from Green Bakery & Cafe to Hope Children Shelter. Verification code matched.',
       timestamp: new Date(now - 12 * 60 * 60 * 1000)

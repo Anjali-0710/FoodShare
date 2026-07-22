@@ -24,4 +24,4 @@ services:
         sync: false
         placeholder: "your-gmail-app-password"
       - key: SMTP_FROM
-        value: '"FoodShare AI" <no-reply@foodshareai.com>'
+        value: '"FoodReach" <no-reply@foodshareai.com>'

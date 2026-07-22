@@ -28,24 +28,7 @@ interface VolunteerState {
   error: string | null;
 }
 
-const MOCK_NOTIFICATIONS: VolunteerNotification[] = [
-  {
-    id: 'v_notif_1',
-    type: 'new_assignment',
-    title: 'New Delivery Claimed!',
-    message: 'You claimed a delivery task for Cooked Biryani (80 Plates) from Spice Garden Restaurant.',
-    timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-    read: false,
-  },
-  {
-    id: 'v_notif_2',
-    type: 'pickup_reminder',
-    title: 'Pickup Reminder ⏰',
-    message: 'Remember to pick up the Bread & Pastries from Modern Bakery. It expires soon!',
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    read: true,
-  }
-];
+const MOCK_NOTIFICATIONS: VolunteerNotification[] = [];
 
 const initialState: VolunteerState = {
   leaderboard: [],

@@ -18,43 +18,7 @@ interface NgoState {
   loading: boolean;
 }
 
-const MOCK_NOTIFICATIONS: NgoNotification[] = [
-  {
-    id: 'notif_1',
-    type: 'new_donation',
-    title: 'New Donation Available!',
-    message: '80 Plates of Biryani listed near Koramangala — High freshness score 94%',
-    timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-    read: false,
-  },
-  {
-    id: 'notif_2',
-    type: 'volunteer_assigned',
-    title: 'Volunteer Assigned',
-    message: 'Rohan Sharma has been assigned to pick up your bread donation from Modern Bakery',
-    donationId: 'c002',
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    read: false,
-  },
-  {
-    id: 'notif_3',
-    type: 'delivery_completed',
-    title: 'Delivery Completed! 🎉',
-    message: 'Mixed Vegetables (25 Kg) successfully delivered. Community impact updated!',
-    donationId: 'c003',
-    timestamp: new Date(Date.now() - 5 * 3600000).toISOString(),
-    read: true,
-  },
-  {
-    id: 'notif_4',
-    type: 'accepted',
-    title: 'Donation Accepted',
-    message: 'You accepted 40 Packets of Fresh Bread from Modern Bakery. Awaiting volunteer.',
-    donationId: 'c001',
-    timestamp: new Date(Date.now() - 8 * 3600000).toISOString(),
-    read: true,
-  },
-];
+const MOCK_NOTIFICATIONS: NgoNotification[] = [];
 
 const initialState: NgoState = {
   myDonations: [],

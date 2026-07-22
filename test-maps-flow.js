@@ -9,22 +9,39 @@ async function runTests() {
   console.log('🧪 Starting Maps & Location Module Integration Tests...');
   
   try {
-    // 1. Log in to obtain a valid access token
-    console.log('\nStep 1: Logging in as a registered user...');
-    const loginRes = await fetch(`${BACKEND_URL}/auth/login`, {
+    // 1. Register a user and verify OTP to obtain a valid access token
+    console.log('\nStep 1: Registering a donor user and verifying OTP...');
+    const testEmail = `donor-maps-${Date.now()}@foodshare.com`;
+    const regRes = await fetch(`${BACKEND_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'donor@foodshare.com',
-        password: 'password123'
+        name: 'Maps Test Donor',
+        email: testEmail,
+        password: 'password123',
+        role: 'donor',
+        contactNumber: '+919999000222',
+        address: 'MG Road, Bangalore',
+        latitude: 12.9716,
+        longitude: 77.5946
       })
     });
-    const loginData = await loginRes.json();
-    if (!loginData.success) {
-      throw new Error(`Login failed: ${loginData.message}`);
+    const regData = await regRes.json();
+    if (!regData.success) {
+      throw new Error(`Donor registration failed: ${regData.message}`);
     }
-    const token = loginData.token;
-    console.log('✅ Logged in successfully!');
+
+    const verifyRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testEmail, code: regData.code })
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) {
+      throw new Error(`OTP verification failed: ${verifyData.message}`);
+    }
+    const token = verifyData.token;
+    console.log('✅ Registered and logged in successfully! Token acquired.');
 
     // 2. Test Distance Calculation
     console.log('\nStep 2: Testing Haversine Distance calculations between two Bangalore points...');

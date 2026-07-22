@@ -1,7 +1,7 @@
 {
   "name": "foodshare-backend",
   "version": "1.0.0",
-  "description": "FoodShare AI Platform Backend Service",
+  "description": "FoodReach Platform Backend Service",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

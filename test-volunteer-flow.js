@@ -32,9 +32,18 @@ async function runTests() {
     });
     const donorData = await donorReg.json();
     if (!donorData.success) throw new Error(`Donor registration failed: ${donorData.message}`);
-    const donorToken = donorData.token;
-    console.log('✅ Donor registered!');
-
+    
+    // Verify OTP
+    const donorVerify = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: donorEmail, code: donorData.code })
+    });
+    const donorVerifyData = await donorVerify.json();
+    if (!donorVerifyData.success) throw new Error(`Donor OTP verification failed: ${donorVerifyData.message}`);
+    const donorToken = donorVerifyData.token;
+    console.log('✅ Donor registered and OTP verified!');
+ 
     // 2. Register NGO
     console.log('\nStep 2: Registering NGO...');
     const ngoReg = await fetch(`${BACKEND_URL}/auth/register`, {
@@ -53,9 +62,18 @@ async function runTests() {
     });
     const ngoData = await ngoReg.json();
     if (!ngoData.success) throw new Error(`NGO registration failed: ${ngoData.message}`);
-    const ngoToken = ngoData.token;
-    console.log('✅ NGO registered!');
-
+    
+    // Verify OTP
+    const ngoVerify = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ngoEmail, code: ngoData.code })
+    });
+    const ngoVerifyData = await ngoVerify.json();
+    if (!ngoVerifyData.success) throw new Error(`NGO OTP verification failed: ${ngoVerifyData.message}`);
+    const ngoToken = ngoVerifyData.token;
+    console.log('✅ NGO registered and OTP verified!');
+ 
     // 3. Register Volunteer
     console.log('\nStep 3: Registering Volunteer...');
     const volReg = await fetch(`${BACKEND_URL}/auth/register`, {
@@ -74,8 +92,17 @@ async function runTests() {
     });
     const volData = await volReg.json();
     if (!volData.success) throw new Error(`Volunteer registration failed: ${volData.message}`);
-    const volToken = volData.token;
-    console.log('✅ Volunteer registered!');
+    
+    // Verify OTP
+    const volVerify = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: volunteerEmail, code: volData.code })
+    });
+    const volVerifyData = await volVerify.json();
+    if (!volVerifyData.success) throw new Error(`Volunteer OTP verification failed: ${volVerifyData.message}`);
+    const volToken = volVerifyData.token;
+    console.log('✅ Volunteer registered and OTP verified!');
 
     // 4. Donor posts a donation
     console.log('\nStep 4: Donor listing a fresh food donation...');

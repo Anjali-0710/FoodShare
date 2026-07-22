@@ -5,6 +5,13 @@ import { Donation } from '../models/Donation';
 import { SystemLog } from '../models/Report';
 import { getDbStatus } from '../config/db';
 import { mockUsers, mockDonations, mockSystemLogs } from '../config/mockDb';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || 'https://ocsgzbmnnldpcsbfgocz.supabase.co',
+  process.env.SUPABASE_SERVICE_KEY || ''
+);
+
 
 const getKgEquivalent = (quantity: number, unit: string): number => {
   switch (unit) {
@@ -76,6 +83,53 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
+    // Sync to Supabase using service role bypass
+    try {
+      // 1. Update profiles table
+      const { error: sbProfileErr } = await supabase
+        .from('profiles')
+        .update({
+          name,
+          email,
+          role: role as any,
+          contact_number: contactNumber,
+          address
+        })
+        .eq('id', id);
+
+      if (sbProfileErr) {
+        console.error('Supabase profile update error:', sbProfileErr.message);
+      }
+
+      // 2. Update Supabase Auth user record (auth.users)
+      const { error: sbAuthErr } = await supabase.auth.admin.updateUserById(id, {
+        email,
+        user_metadata: { name, role, contact_number: contactNumber, address }
+      });
+      if (sbAuthErr) {
+        console.error('Supabase Auth update error:', sbAuthErr.message);
+      }
+    } catch (sbErr: any) {
+      console.error('Supabase update synchronization failed:', sbErr.message);
+    }
+
+    // If both databases return null / mock not found, return 404
+    if (!updatedUser) {
+      // Fallback: see if we can get user info from profiles
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', id).single();
+      if (profile) {
+        updatedUser = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role,
+          contactNumber: profile.contact_number,
+          address: profile.address,
+          isActive: profile.is_active
+        };
+      }
+    }
+
     if (!updatedUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -125,6 +179,43 @@ export const toggleUserStatus = async (req: AuthenticatedRequest, res: Response)
           details: `${isActive ? 'Activated' : 'Deactivated'} login credentials for user ID: ${id}`,
           timestamp: new Date()
         });
+      }
+    }
+
+    // Sync status update to Supabase using service role bypass
+    try {
+      const { error: sbProfileErr } = await supabase
+        .from('profiles')
+        .update({ is_active: isActive })
+        .eq('id', id);
+
+      if (sbProfileErr) {
+        console.error('Supabase profile active status sync error:', sbProfileErr.message);
+      }
+      
+      const { error: sbAuthErr } = await supabase.auth.admin.updateUserById(id, {
+        user_metadata: { is_active: isActive }
+      });
+      if (sbAuthErr) {
+        console.error('Supabase Auth active status metadata sync error:', sbAuthErr.message);
+      }
+    } catch (sbErr: any) {
+      console.error('Supabase toggle status sync failed:', sbErr.message);
+    }
+
+    // Fallback: see if we can get user info from profiles
+    if (!updatedUser) {
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', id).single();
+      if (profile) {
+        updatedUser = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role,
+          contactNumber: profile.contact_number,
+          address: profile.address,
+          isActive: profile.is_active
+        };
       }
     }
 

@@ -2,10 +2,10 @@
  * Whitelist mapping defining which screens are accessible by which user roles.
  */
 export const ROLE_SCREENS: Record<string, string[]> = {
-  donor:     ['Dashboard', 'CreateDonation', 'TrackDonation', 'History', 'DonationList', 'DonationDetail', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
-  ngo:       ['Dashboard', 'BrowseDonations', 'NgoRequests', 'NgoDonationDetail', 'NgoNotifications', 'History', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
-  volunteer: ['Dashboard', 'PickupRoute', 'Leaderboard', 'Profile', 'VolunteerHistory', 'VolunteerNotifications', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
-  admin:     ['Dashboard', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
+  donor:     ['Dashboard', 'CreateDonation', 'TrackDonation', 'History', 'DonationList', 'DonationDetail', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  ngo:       ['Dashboard', 'BrowseDonations', 'NgoRequests', 'NgoDonationDetail', 'NgoNotifications', 'History', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  volunteer: ['Dashboard', 'PickupRoute', 'Leaderboard', 'Profile', 'VolunteerHistory', 'VolunteerNotifications', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  admin:     ['Dashboard', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
 };
 
 interface RouteAccessResult {

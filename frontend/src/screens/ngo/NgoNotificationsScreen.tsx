@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, Bell, CheckCheck, Package, Truck, Star, Zap } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { markNotificationRead, markAllNotificationsRead, NgoNotification, setActiveDonation } from '../../store/ngoSlice';
+import { setActiveDonation } from '../../store/ngoSlice';
+import NotificationService from '../../services/notificationService';
 import { AppTheme } from '../../theme/theme';
 
 interface NgoNotificationsScreenProps {
@@ -13,7 +14,7 @@ interface NgoNotificationsScreenProps {
   navigate: (screen: string) => void;
 }
 
-const getNotifIcon = (type: NgoNotification['type'], theme: AppTheme) => {
+const getNotifIcon = (type: string, theme: AppTheme) => {
   switch (type) {
     case 'new_donation': return <Zap size={18} color={theme.colors.info} />;
     case 'accepted': return <Package size={18} color={theme.colors.accent} />;
@@ -23,7 +24,7 @@ const getNotifIcon = (type: NgoNotification['type'], theme: AppTheme) => {
   }
 };
 
-const getNotifColor = (type: NgoNotification['type'], theme: AppTheme) => {
+const getNotifColor = (type: string, theme: AppTheme) => {
   switch (type) {
     case 'new_donation': return theme.colors.info;
     case 'accepted': return theme.colors.accent;
@@ -46,10 +47,44 @@ const formatTime = (isoStr: string) => {
 
 export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { notifications, unreadCount, myDonations } = useSelector((state: RootState) => state.ngo);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { myDonations } = useSelector((state: RootState) => state.ngo);
 
-  const handleNotifPress = (notif: NgoNotification) => {
-    dispatch(markNotificationRead(notif.id));
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const data = await NotificationService.getNotifications(user.id);
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to fetch NGO notifications:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
+  };
+
+  const handleNotifPress = async (notif: any) => {
+    const notifId = notif.id || notif._id;
+    try {
+      await NotificationService.markRead(notifId);
+      setNotifications(prev => prev.map(n => (n._id === notifId || n.id === notifId) ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+
     if (notif.donationId) {
       const donation = myDonations.find(
         d => d.id === notif.donationId || d._id === notif.donationId
@@ -63,11 +98,23 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
     }
   };
 
-  const renderNotif = ({ item }: { item: NgoNotification }) => {
+  const handleMarkAllRead = async () => {
+    if (!user?.id) return;
+    try {
+      await NotificationService.markAllRead(user.id);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err);
+    }
+  };
+
+  const renderNotif = ({ item }: { item: any }) => {
     const notifColor = getNotifColor(item.type, theme);
+    const notifId = item.id || item._id;
+    const notifTime = item.timestamp || item.createdAt;
     return (
       <TouchableOpacity
-        id={`notif-${item.id}`}
+        id={`notif-${notifId}`}
         style={[
           styles.notifCard,
           {
@@ -100,7 +147,7 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
             {item.message}
           </Text>
           <Text style={[styles.notifTime, { color: theme.colors.textSecondary }]}>
-            {formatTime(item.timestamp)}
+            {formatTime(notifTime)}
           </Text>
         </View>
       </TouchableOpacity>
@@ -109,6 +156,7 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
 
   const unread = notifications.filter(n => !n.read);
   const read = notifications.filter(n => n.read);
+  const unreadCount = unread.length;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -129,7 +177,7 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
           <TouchableOpacity
             id="btn-mark-all-read"
             style={[styles.markAllBtn, { borderColor: theme.colors.border }]}
-            onPress={() => dispatch(markAllNotificationsRead())}
+            onPress={handleMarkAllRead}
           >
             <CheckCheck size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />
             <Text style={[styles.markAllText, { color: theme.colors.primary }]}>Mark all read</Text>
@@ -137,16 +185,24 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
         )}
       </View>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Bell size={48} color={theme.colors.textSecondary} style={{ marginBottom: 14 }} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>All Caught Up!</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications available</Text>
           <Text style={[styles.emptyDesc, { color: theme.colors.textSecondary }]}>
             No notifications yet. Accept donations to receive updates.
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        >
           {/* Unread Section */}
           {unread.length > 0 && (
             <>
@@ -156,7 +212,7 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
               </View>
               <FlatList
                 data={unread}
-                keyExtractor={n => n.id}
+                keyExtractor={n => n.id || n._id}
                 renderItem={renderNotif}
                 scrollEnabled={false}
               />
@@ -172,7 +228,7 @@ export const NgoNotificationsScreen: React.FC<NgoNotificationsScreenProps> = ({ 
               </View>
               <FlatList
                 data={read}
-                keyExtractor={n => n.id}
+                keyExtractor={n => n.id || n._id}
                 renderItem={renderNotif}
                 scrollEnabled={false}
               />

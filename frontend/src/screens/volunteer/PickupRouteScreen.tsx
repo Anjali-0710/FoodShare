@@ -4,11 +4,14 @@ import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, CheckSquare, Sparkles, Navigation, QrCode, Phone, MapPin, Milestone, Clock, Calendar } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { updateKarmaPoints } from '../../store/authSlice';
-import { setSubStatus, addVolunteerNotification } from '../../store/volunteerSlice';
+import { setSubStatus } from '../../store/volunteerSlice';
 import VolunteerService from '../../services/volunteerService';
+import NotificationService from '../../services/notificationService';
 import { AppTheme } from '../../theme/theme';
 import MapMock from '../../components/MapMock';
+import OSMMap from '../../components/OSMMap';
 import QRScannerMock from '../../components/QRScannerMock';
+import { supabase } from '../../services/supabase';
 
 interface PickupRouteScreenProps {
   theme: AppTheme;
@@ -34,7 +37,47 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
       if (!user?.id) return;
       const assigned = await VolunteerService.getAssignedPickups(user.id);
       if (Array.isArray(assigned) && assigned.length > 0) {
-        setTask(assigned[0]);
+        const active = assigned[0];
+        // Fetch NGO details from Supabase if ngoId exists
+        if (active.ngoId) {
+          try {
+            const { data: ngoProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number, address, latitude, longitude')
+              .eq('id', active.ngoId)
+              .single();
+            if (ngoProfile) {
+              active.ngoDetails = {
+                name: ngoProfile.name,
+                contactNumber: ngoProfile.contact_number,
+                address: ngoProfile.address,
+                latitude: ngoProfile.latitude,
+                longitude: ngoProfile.longitude,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching NGO profile:', e);
+          }
+        }
+        // Fetch Donor details from Supabase if donorId exists
+        if (active.donorId) {
+          try {
+            const { data: donorProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number')
+              .eq('id', active.donorId)
+              .single();
+            if (donorProfile) {
+              active.donorDetails = {
+                name: donorProfile.name,
+                contactNumber: donorProfile.contact_number,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching donor profile:', e);
+          }
+        }
+        setTask(active);
       } else {
         setTask(null);
       }
@@ -55,13 +98,14 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     const taskId = task.id || task._id;
     dispatch(setSubStatus({ id: taskId, status: 'Pickup Started' }));
     
-    // Dispatch pickup reminder alert
-    dispatch(addVolunteerNotification({
-      type: 'pickup_reminder',
+    // Write pickup reminder to the database
+    NotificationService.createNotification({
+      userId: user?.id || '',
       title: 'Pickup Commenced 🧭',
       message: `You started pickup for ${task.foodType}. Head to ${task.pickupAddress || 'donor site'}.`,
-      donationId: taskId
-    }));
+      type: 'pickup_reminder',
+      relatedDonationId: taskId
+    }).catch(err => console.error(err));
   };
 
   const handleConfirmPickup = async () => {
@@ -70,16 +114,9 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     setActionLoading(true);
 
     try {
-      const updated = await VolunteerService.updateStatus(taskId, 'Picked Up', user?.id || '');
+      await VolunteerService.updateStatus(taskId, 'Picked Up', user?.id || '');
       dispatch(setSubStatus({ id: taskId, status: null }));
-      setTask(updated);
-
-      dispatch(addVolunteerNotification({
-        type: 'new_assignment',
-        title: 'Food Picked Up! 📦',
-        message: `Cargo loaded. Deliver ${task.foodType} to ${task.ngoName || task.ngoDetails?.name || 'NGO'}.`,
-        donationId: taskId
-      }));
+      await fetchActiveTask();
     } catch (error: any) {
       console.error('Confirm pickup error:', error);
       alert(error.message || 'Error updating pickup status.');
@@ -93,13 +130,14 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     const taskId = task.id || task._id;
     dispatch(setSubStatus({ id: taskId, status: 'In Transit' }));
 
-    // Dispatch delivery reminder alert
-    dispatch(addVolunteerNotification({
-      type: 'delivery_reminder',
+    // Write delivery reminder to the database
+    NotificationService.createNotification({
+      userId: user?.id || '',
       title: 'In Transit 🚚',
       message: `You are in transit to ${task.ngoDetails?.name || 'NGO'}. Please drive safely.`,
-      donationId: taskId
-    }));
+      type: 'delivery_reminder',
+      relatedDonationId: taskId
+    }).catch(err => console.error(err));
   };
 
   const handleMarkDelivered = async () => {
@@ -108,16 +146,9 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     setActionLoading(true);
 
     try {
-      const updated = await VolunteerService.updateStatus(taskId, 'Delivered', user?.id || '');
+      await VolunteerService.updateStatus(taskId, 'Delivered', user?.id || '');
       dispatch(setSubStatus({ id: taskId, status: null }));
-      setTask(updated);
-
-      dispatch(addVolunteerNotification({
-        type: 'delivery_reminder',
-        title: 'Arrived at Destination! 🏢',
-        message: `Please request the NGO representative to present the QR code to verify.`,
-        donationId: taskId
-      }));
+      await fetchActiveTask();
     } catch (error: any) {
       console.error('Mark delivered error:', error);
       alert(error.message || 'Error updating status to Delivered.');
@@ -133,14 +164,6 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
     try {
       await VolunteerService.verifyQrCode(scannedCode);
       dispatch(updateKarmaPoints(50));
-
-      dispatch(addVolunteerNotification({
-        type: 'completion_confirmation',
-        title: 'Delivery Finalized! 🎉',
-        message: `Success! Delivery completed. +50 Karma Points credited to your account.`,
-        donationId: task.id || task._id
-      }));
-
       setCompletedSuccess(true);
     } catch (error: any) {
       console.error('QR verification error:', error);
@@ -219,12 +242,26 @@ export const PickupRouteScreen: React.FC<PickupRouteScreenProps> = ({ theme, nav
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Navigation Map Mock */}
-        <MapMock
+        {/* Navigation Map — OpenStreetMap via Leaflet */}
+        <OSMMap
           theme={theme}
-          pickupLabel={task.donorDetails?.name || task.donorName || 'Donor'}
-          deliveryLabel={task.ngoDetails?.name || task.ngoName || 'NGO'}
-          animateRoute={currentStatus === 'Pickup Started' || currentStatus === 'In Transit'}
+          latitude={task.latitude ?? task.gpsLocation?.latitude ?? 12.9716}
+          longitude={task.longitude ?? task.gpsLocation?.longitude ?? 77.5946}
+          markers={[
+            ((task.latitude && task.longitude) || (task.gpsLocation?.latitude && task.gpsLocation?.longitude))
+              ? {
+                  latitude: task.latitude ?? task.gpsLocation?.latitude,
+                  longitude: task.longitude ?? task.gpsLocation?.longitude,
+                  label: task.donorDetails?.name || task.donorName || 'Pickup',
+                  color: theme.colors.accent
+                }
+              : { latitude: 12.9716, longitude: 77.5946, label: 'Pickup Point', color: theme.colors.accent },
+            ...(task.ngoDetails?.latitude && task.ngoDetails?.longitude
+              ? [{ latitude: task.ngoDetails.latitude, longitude: task.ngoDetails.longitude, label: task.ngoDetails?.name || 'NGO', color: theme.colors.primary }]
+              : []),
+          ]}
+          height={240}
+          zoom={13}
         />
 
         {/* 6-Step Status Timeline Stepper */}

@@ -9,7 +9,7 @@ import {
   Check, XCircle, MessageSquare, AlertTriangle, ChevronRight,
 } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { setActiveDonation, addNotification } from '../../store/ngoSlice';
+import { setActiveDonation } from '../../store/ngoSlice';
 import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 
@@ -110,15 +110,6 @@ export const BrowseDonationsScreen: React.FC<BrowseDonationsScreenProps> = ({ th
         ngoName: user?.name,
       });
       setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
-      dispatch(addNotification({
-        id: `notif_accept_${id}`,
-        type: 'accepted',
-        title: 'Donation Accepted',
-        message: `You accepted ${modalItem.quantity} ${modalItem.unit} of ${modalItem.foodType} from ${modalItem.donorName || 'a donor'}.`,
-        donationId: id,
-        timestamp: new Date().toISOString(),
-        read: false,
-      }));
     } catch {
       setDonations(prev => prev.filter(d => d._id !== id && d.id !== id));
     } finally {

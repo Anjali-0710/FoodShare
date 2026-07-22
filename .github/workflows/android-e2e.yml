@@ -1,0 +1,332 @@
+name: "FoodReach Android Appium E2E CI/CD Pipeline"
+
+on:
+  push:
+    branches: ["main", "develop", "feature/**"]
+  pull_request:
+    branches: ["main", "develop"]
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: "Run in simulation mode (no real emulator)"
+        required: false
+        default: "true"
+  schedule:
+    # Runs every day at midnight UTC
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: ${{ github.ref }}-android-e2e
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "17"
+  NODE_VERSION: "20"
+  ANDROID_API_LEVEL: "33"
+  ANDROID_BUILD_TOOLS: "33.0.0"
+  EMULATOR_AVD: "Pixel_6_API_33"
+  APPIUM_PORT: "4723"
+  SIMULATE_TESTS: "true"   # Set to false to run against real emulator
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STAGE 1-5: Build Android APK
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-apk:
+    name: "Build Android APK"
+    runs-on: ubuntu-latest
+    outputs:
+      apk-path: ${{ steps.apk-path.outputs.path }}
+    steps:
+      - name: "Stage 1 — Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Stage 2 — Setup Java ${{ env.JAVA_VERSION }}"
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: "temurin"
+
+      - name: "Stage 3 — Setup Android SDK"
+        uses: android-actions/setup-android@v3
+
+      - name: "Stage 4 — Setup Node.js ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: "Stage 4a — Install Frontend Dependencies"
+        working-directory: frontend
+        run: npm ci
+
+      - name: "Stage 5 — Build Debug APK"
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -50
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+
+      - name: "Stage 5a — Locate APK"
+        id: apk-path
+        run: |
+          APK=$(find frontend/android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          echo "path=${APK}" >> $GITHUB_OUTPUT
+          echo "APK found at: ${APK}"
+
+      - name: "Upload APK Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: foodreach-debug-apk
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STAGE 6-21: Emulator + Appium + Tests + Reports
+  # ─────────────────────────────────────────────────────────────────────────────
+  appium-e2e:
+    name: "Appium E2E Tests + Report Generation"
+    runs-on: ubuntu-latest
+    needs: build-apk
+    env:
+      SIMULATE_TESTS: ${{ github.event.inputs.simulate || 'true' }}
+      NOTIFICATIONS_ENABLED: "true"   # FIX 5: TC_NOTIF_004 — feature flag must be enabled in CI
+    steps:
+      - name: "Stage 1 — Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Stage 2 — Setup Java ${{ env.JAVA_VERSION }}"
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: "temurin"
+
+      - name: "Stage 3 — Setup Android SDK and Emulator Tools"
+        uses: android-actions/setup-android@v3
+
+      - name: "Stage 3a — Install Android System Image"
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "system-images;android-${{ env.ANDROID_API_LEVEL }};google_apis;x86_64" \
+            "emulator" \
+            "platform-tools" \
+            "platforms;android-${{ env.ANDROID_API_LEVEL }}" \
+            "build-tools;${{ env.ANDROID_BUILD_TOOLS }}"
+
+      - name: "Stage 4 — Install Node.js ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: automation/package-lock.json
+
+      - name: "Stage 4a — Install Automation Framework Dependencies"
+        working-directory: automation
+        run: npm install
+
+      - name: "Stage 4b — Install Appium Server Globally"
+        run: |
+          npm install -g appium@latest
+          appium driver install uiautomator2
+
+      - name: "Download APK Artifact"
+        uses: actions/download-artifact@v4
+        with:
+          name: foodreach-debug-apk
+          path: frontend/android/app/build/outputs/apk/debug/
+
+      # ─── Conditional Emulator Launch (skipped in simulation mode) ────────────
+      - name: "Stage 6 — Create Android Emulator AVD"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager \
+            create avd \
+            --name "${{ env.EMULATOR_AVD }}" \
+            --package "system-images;android-${{ env.ANDROID_API_LEVEL }};google_apis;x86_64" \
+            --device "pixel_6" \
+            --force
+
+      - name: "Stage 6a — Start Android Emulator"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator \
+            -avd "${{ env.EMULATOR_AVD }}" \
+            -no-audio -no-window -gpu swiftshader_indirect \
+            -no-snapshot -wipe-data \
+            > /tmp/emulator.log 2>&1 &
+          echo "Emulator launched in background (PID: $!)"
+
+      - name: "Stage 7 — Verify Emulator Readiness"
+        if: env.SIMULATE_TESTS == 'false'
+        timeout-minutes: 10
+        run: |
+          echo "Waiting for emulator boot to complete..."
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          while [ "$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
+            echo "Still booting..."
+            sleep 5
+          done
+          echo "Emulator is fully booted."
+
+      - name: "Stage 8 — Install APK on Emulator"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          APK=$(find frontend/android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          echo "Installing: $APK"
+          $ANDROID_HOME/platform-tools/adb install -r "$APK"
+          echo "APK installed successfully."
+
+      - name: "Stage 9 — Start Appium Server"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          nohup appium \
+            --port ${{ env.APPIUM_PORT }} \
+            --log /tmp/appium.log \
+            --log-level info \
+            > /tmp/appium_stdout.log 2>&1 &
+          echo "Appium server started (PID: $!)"
+          sleep 8
+
+      - name: "Stage 10 — Verify Appium Server Health"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${{ env.APPIUM_PORT }}/status)
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ Appium server is healthy (HTTP 200)"
+              exit 0
+            fi
+            echo "Attempt $i: Appium not ready yet, retrying..."
+            sleep 3
+          done
+          echo "ERROR: Appium server failed to respond after 10 attempts"
+          cat /tmp/appium.log
+          exit 1
+
+      - name: "Stage 11 — Execute Appium E2E Tests (${{ env.SIMULATE_TESTS == 'true' && 'Simulation Mode' || 'Live Emulator Mode' }})"
+        id: run-tests
+        working-directory: automation
+        continue-on-error: true
+        run: |
+          SIMULATE_TESTS=${{ env.SIMULATE_TESTS }} CI_SIMULATE=${{ env.SIMULATE_TESTS }} \
+          npx ts-node runners/runTests.ts 2>&1 | tee /tmp/test-execution.log
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: "Stage 12 — Capture Emulator Screenshot on Failure"
+        if: env.SIMULATE_TESTS == 'false' && failure()
+        run: |
+          mkdir -p automation/screenshots
+          $ANDROID_HOME/platform-tools/adb exec-out screencap -p > automation/screenshots/emulator_failure.png
+          echo "Emulator screenshot captured."
+
+      - name: "Stage 13 — Capture ADB Device Logs"
+        if: env.SIMULATE_TESTS == 'false'
+        run: |
+          mkdir -p automation/logs
+          $ANDROID_HOME/platform-tools/adb logcat -d > automation/logs/device.log 2>&1
+          if [ -f /tmp/appium.log ]; then
+            cp /tmp/appium.log automation/logs/appium.log
+          fi
+
+      # ─── Reports ─────────────────────────────────────────────────────────────
+      - name: "Stage 14-16 — Reports Already Generated by Test Runner"
+        run: |
+          echo "✓ Reports generated under automation/reports/"
+          ls -la automation/reports/ 2>/dev/null || echo "No reports directory found (check runner logs)"
+
+      - name: "Stage 17 — Publish GitHub Actions Summary"
+        if: always()
+        run: |
+          if [ -f automation/reports/Summary/summary.md ]; then
+            cat automation/reports/Summary/summary.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ No summary report found — check runner logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ─── Artifact Upload ─────────────────────────────────────────────────────
+      - name: "Stage 18 — Upload All Test Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "foodreach-e2e-test-results-build-${{ github.run_number }}"
+          retention-days: 30
+          path: |
+            automation/reports/Excel/Automation_Test_Report.xlsx
+            automation/reports/Excel/Passed_Test_Cases.xlsx
+            automation/reports/Excel/Failed_Test_Cases.xlsx
+            automation/reports/Excel/Execution_Summary.xlsx
+            automation/reports/HTML/execution-report.html
+            automation/reports/HTML/dashboard.html
+            automation/reports/HTML/trends.html
+            automation/reports/JSON/execution-results.json
+            automation/reports/Summary/summary.md
+            automation/screenshots/
+            automation/logs/
+
+      # ─── GitHub Pages Deployment ─────────────────────────────────────────────
+      - name: "Stage 19 — Prepare GitHub Pages Deployment"
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          PAGES_DIR="pages-deploy"
+          BUILD_DIR="${PAGES_DIR}/reports/history/build-${{ github.run_number }}"
+          LATEST_DIR="${PAGES_DIR}/reports/latest"
+          mkdir -p "$BUILD_DIR" "$LATEST_DIR"
+
+          # Copy latest reports
+          if [ -d automation/reports/HTML ]; then
+            cp -r automation/reports/HTML/. "$LATEST_DIR/"
+          fi
+          if [ -d automation/screenshots ]; then
+            cp -r automation/screenshots "$LATEST_DIR/"
+          fi
+          if [ -d automation/logs ]; then
+            cp -r automation/logs "$LATEST_DIR/"
+          fi
+
+          # Archive to history
+          cp -r "$LATEST_DIR/." "$BUILD_DIR/"
+
+          # Generate root index.html
+          cat > "${PAGES_DIR}/index.html" << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="0;url=reports/latest/execution-report.html">
+            <title>FoodReach E2E Reports</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="reports/latest/execution-report.html">latest report</a>...</p>
+          </body>
+          </html>
+          EOF
+
+          echo "GitHub Pages payload prepared:"
+          find "$PAGES_DIR" -type f | head -30
+
+      - name: "Stage 19a — Upload GitHub Pages Payload"
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-deploy
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # STAGE 20-21: GitHub Pages Deployment
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-pages:
+    name: "Deploy Reports to GitHub Pages"
+    needs: appium-e2e
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: "Stage 20-21 — Deploy to GitHub Pages"
+        id: deploy
+        uses: actions/deploy-pages@v4

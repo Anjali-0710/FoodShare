@@ -92,7 +92,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => 
             <Leaf size={32} color={theme.colors.primary} />
           </View>
         </View>
-        <Text style={[styles.title, { color: theme.colors.primary }]}>FoodShare AI</Text>
+        <Text style={[styles.title, { color: theme.colors.primary }]}>FoodReach</Text>
         <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
           Connect. Share. Reduce Waste.
         </Text>
@@ -206,7 +206,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => 
         {/* Divider */}
         <View style={styles.divider}>
           <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-          <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>New to FoodShare?</Text>
+          <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>New to FoodReach?</Text>
           <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
         </View>
 
@@ -223,7 +223,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => 
       </View>
 
       <Text style={[styles.footerNote, { color: theme.colors.textSecondary }]}>
-        FoodShare AI © 2025 · Reducing food waste, one meal at a time.
+        FoodReach © 2025 · Reducing food waste, one meal at a time.
       </Text>
     </ScrollView>
   );

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, MapPin, Navigation, Milestone, Clock, CheckCircle, AlertTriangle, ShieldAlert, Sliders, RefreshCw } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { AppTheme } from '../../theme/theme';
 import LocationService from '../../services/locationService';
+import OSMMap from '../../components/OSMMap';
+import { supabase } from '../../services/supabase';
+import { updateProfile } from '../../store/authSlice';
 
 interface MapsPlaygroundScreenProps {
   theme: AppTheme;
@@ -12,26 +15,103 @@ interface MapsPlaygroundScreenProps {
 }
 
 export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ theme, navigate }) => {
+  const dispatch = useDispatch();
   const { token, user } = useSelector((state: RootState) => state.auth);
 
-  // Map settings
-  const [selectedLat, setSelectedLat] = useState('12.9716'); // Bangalore default
-  const [selectedLon, setSelectedLon] = useState('77.5946');
-  
-  // Multi-pin targets
-  const [donorLat, setDonorLat] = useState('12.9812');
-  const [donorLon, setDonorLon] = useState('77.6321');
-  const [ngoLat, setNgoLat] = useState('12.9482');
-  const [ngoLon, setNgoLon] = useState('77.5684');
+  // Map settings - center on user's profile location if exists, otherwise Bangalore center
+  const [selectedLat, setSelectedLat] = useState(user?.gpsLocation?.latitude?.toString() || '12.9716');
+  const [selectedLon, setSelectedLon] = useState(user?.gpsLocation?.longitude?.toString() || '77.5946');
 
-  // Calculations states
+  // Database-backed states
+  const [ngos, setNgos] = useState<any[]>([]);
+  const [activeDonation, setActiveDonation] = useState<any>(null);
+  const [assignedVolunteer, setAssignedVolunteer] = useState<any>(null);
+  const [assignedNgo, setAssignedNgo] = useState<any>(null);
+
+  // Status/Calculation states
   const [loading, setLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [distResult, setDistResult] = useState<number | null>(null);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [etaResult, setEtaResult] = useState<any>(null);
 
-  // Active overlay path display config
-  const [activeRouteType, setActiveRouteType] = useState<'none' | 'volunteer_to_donor' | 'donor_to_ngo' | 'full_route'>('none');
+  // Fetch active NGO users & volunteer details from Supabase on mount
+  const fetchSupabaseData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // 1. Fetch active NGO user profiles from profiles table
+      const { data: ngosData, error: ngosError } = await supabase
+        .from('profiles')
+        .select('id, name, latitude, longitude, address, contact_number')
+        .eq('role', 'ngo')
+        .eq('is_active', true);
+
+      if (ngosError) throw ngosError;
+
+      if (ngosData) {
+        // Filter out those without valid coordinates
+        const validNgos = ngosData.filter(ngo => ngo.latitude !== null && ngo.longitude !== null);
+        setNgos(validNgos);
+      }
+
+      // 2. Fetch current active donation for the donor
+      const { data: donationsData, error: donationsError } = await supabase
+        .from('donations')
+        .select('*')
+        .eq('donor_id', user.id)
+        .in('status', ['Pending', 'Accepted', 'Assigned', 'Picked Up', 'Delivered'])
+        .order('created_at', { ascending: false });
+
+      if (donationsError) throw donationsError;
+
+      if (donationsData && donationsData.length > 0) {
+        const active = donationsData[0];
+        setActiveDonation(active);
+
+        // Fetch NGO details if assigned to this donation
+        if (active.ngo_id) {
+          const { data: ngoProfile } = await supabase
+            .from('profiles')
+            .select('id, name, latitude, longitude, address, contact_number')
+            .eq('id', active.ngo_id)
+            .single();
+          if (ngoProfile) {
+            setAssignedNgo(ngoProfile);
+          }
+        } else {
+          setAssignedNgo(null);
+        }
+
+        // Fetch volunteer details if assigned to this donation
+        if (active.volunteer_id) {
+          const { data: volunteerProfile } = await supabase
+            .from('profiles')
+            .select('id, name, latitude, longitude, contact_number')
+            .eq('id', active.volunteer_id)
+            .single();
+          if (volunteerProfile) {
+            setAssignedVolunteer(volunteerProfile);
+          }
+        } else {
+          setAssignedVolunteer(null);
+        }
+      } else {
+        setActiveDonation(null);
+        setAssignedNgo(null);
+        setAssignedVolunteer(null);
+      }
+    } catch (err) {
+      console.warn('Error fetching Supabase map data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSupabaseData();
+  }, [user?.id]);
 
   // Geolocation detection
   const handleDetectLocation = () => {
@@ -47,7 +127,6 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
         },
         (error) => {
           console.warn('Geolocation blocked or unavailable. Falling back to default coordinates.', error);
-          // Set to randomized Bangalore coordinate nearby
           const randLat = (12.9716 + (Math.random() - 0.5) * 0.05).toFixed(4);
           const randLon = (77.5946 + (Math.random() - 0.5) * 0.05).toFixed(4);
           setSelectedLat(randLat);
@@ -65,24 +144,100 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
     }
   };
 
-  // Perform Calculations
+  // Save coordinates to Supabase profiles
+  const handleSaveLocation = async () => {
+    if (!user) return;
+    setSaveLoading(true);
+    setSaveMessage(null);
+    try {
+      const latVal = Number(selectedLat);
+      const lonVal = Number(selectedLon);
+
+      if (isNaN(latVal) || isNaN(lonVal) || latVal < -90 || latVal > 90 || lonVal < -180 || lonVal > 180) {
+        setSaveMessage({ type: 'error', text: 'Invalid coordinate range bounds.' });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          latitude: latVal,
+          longitude: lonVal
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update Redux state
+      dispatch(updateProfile({
+        gpsLocation: { latitude: latVal, longitude: lonVal }
+      }));
+
+      setSaveMessage({ type: 'success', text: 'Pickup location saved successfully!' });
+      
+      // Auto-dismiss message
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Error saving location:', err);
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to save location.' });
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  // Perform Calculations (Haversine to closest NGO)
   const handleCalculateDistance = async () => {
     setLoading(true);
     try {
+      if (ngos.length === 0) {
+        setDistResult(null);
+        return;
+      }
+
+      let closestNgo = ngos[0];
+      let minDistance = Infinity;
+      const donorLatVal = Number(selectedLat);
+      const donorLonVal = Number(selectedLon);
+
+      ngos.forEach(ngo => {
+        if (ngo.latitude !== null && ngo.longitude !== null) {
+          const dist = getLocalHaversine(donorLatVal, donorLonVal, ngo.latitude, ngo.longitude);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestNgo = ngo;
+          }
+        }
+      });
+
       const res = await LocationService.calculateDistance(
-        Number(selectedLat),
-        Number(selectedLon),
-        Number(donorLat),
-        Number(donorLon),
+        donorLatVal,
+        donorLonVal,
+        closestNgo.latitude,
+        closestNgo.longitude,
         token
       );
       if (res.success) {
         setDistResult(res.distance);
+      } else {
+        setDistResult(minDistance);
       }
     } catch (err: any) {
-      // Local fallback calculation if backend issues
-      const d = getLocalHaversine(Number(selectedLat), Number(selectedLon), Number(donorLat), Number(donorLon));
-      setDistResult(d);
+      // Local fallback calculation
+      if (ngos.length > 0) {
+        let minDistance = Infinity;
+        const donorLatVal = Number(selectedLat);
+        const donorLonVal = Number(selectedLon);
+
+        ngos.forEach(ngo => {
+          if (ngo.latitude !== null && ngo.longitude !== null) {
+            const dist = getLocalHaversine(donorLatVal, donorLonVal, ngo.latitude, ngo.longitude);
+            if (dist < minDistance) {
+              minDistance = dist;
+            }
+          }
+        });
+        setDistResult(minDistance);
+      }
     } finally {
       setLoading(false);
     }
@@ -96,7 +251,6 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
         setValidationResult(res);
       }
     } catch (err: any) {
-      // Local fallback validate
       const latVal = Number(selectedLat);
       const lonVal = Number(selectedLon);
       if (isNaN(latVal) || isNaN(lonVal) || latVal < -90 || latVal > 90 || lonVal < -180 || lonVal > 180) {
@@ -125,35 +279,77 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
   const handleCalculateRouteETA = async () => {
     setLoading(true);
     try {
+      if (ngos.length === 0) {
+        setEtaResult(null);
+        return;
+      }
+
+      let closestNgo = ngos[0];
+      let minDistance = Infinity;
+      const donorLatVal = Number(selectedLat);
+      const donorLonVal = Number(selectedLon);
+
+      ngos.forEach(ngo => {
+        if (ngo.latitude !== null && ngo.longitude !== null) {
+          const dist = getLocalHaversine(donorLatVal, donorLonVal, ngo.latitude, ngo.longitude);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestNgo = ngo;
+          }
+        }
+      });
+
+      const volLat = assignedVolunteer?.latitude ?? (donorLatVal + 0.01);
+      const volLon = assignedVolunteer?.longitude ?? (donorLonVal - 0.01);
+
       const res = await LocationService.getRouteDetails(
-        Number(selectedLat), // Volunteer start coords
-        Number(selectedLon),
-        Number(donorLat),
-        Number(donorLon),
-        Number(ngoLat),
-        Number(ngoLon),
+        Number(volLat),
+        Number(volLon),
+        donorLatVal,
+        donorLonVal,
+        closestNgo.latitude,
+        closestNgo.longitude,
         token
       );
       if (res.success) {
         setEtaResult(res.route);
-        setActiveRouteType('full_route');
+      } else {
+        throw new Error('API route failed');
       }
     } catch (err: any) {
-      // Local fallback calculation
-      const leg1 = getLocalHaversine(Number(selectedLat), Number(selectedLon), Number(donorLat), Number(donorLon));
-      const leg2 = getLocalHaversine(Number(donorLat), Number(donorLon), Number(ngoLat), Number(ngoLon));
-      const speedKmMin = 30 / 60;
-      const leg1Duration = Math.round(leg1 / speedKmMin + 4);
-      const leg2Duration = Math.round(leg2 / speedKmMin + 4);
-      setEtaResult({
-        totalDistance: Math.round((leg1 + leg2) * 100) / 100,
-        totalDuration: leg1Duration + leg2Duration,
-        legs: [
-          { name: 'Volunteer to Donor Pickup', distance: leg1, duration: leg1Duration },
-          { name: 'Donor Pickup to NGO Dropoff', distance: leg2, duration: leg2Duration }
-        ]
-      });
-      setActiveRouteType('full_route');
+      if (ngos.length > 0) {
+        let closestNgo = ngos[0];
+        let minDistance = Infinity;
+        const donorLatVal = Number(selectedLat);
+        const donorLonVal = Number(selectedLon);
+
+        ngos.forEach(ngo => {
+          if (ngo.latitude !== null && ngo.longitude !== null) {
+            const dist = getLocalHaversine(donorLatVal, donorLonVal, ngo.latitude, ngo.longitude);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestNgo = ngo;
+            }
+          }
+        });
+
+        const volLat = assignedVolunteer?.latitude ?? (donorLatVal + 0.01);
+        const volLon = assignedVolunteer?.longitude ?? (donorLonVal - 0.01);
+
+        const leg1 = getLocalHaversine(volLat, volLon, donorLatVal, donorLonVal);
+        const leg2 = getLocalHaversine(donorLatVal, donorLonVal, closestNgo.latitude, closestNgo.longitude);
+        const speedKmMin = 30 / 60;
+        const leg1Duration = Math.round(leg1 / speedKmMin + 4);
+        const leg2Duration = Math.round(leg2 / speedKmMin + 4);
+        setEtaResult({
+          totalDistance: Math.round((leg1 + leg2) * 100) / 100,
+          totalDuration: leg1Duration + leg2Duration,
+          legs: [
+            { name: 'Volunteer to Donor Pickup', distance: leg1, duration: leg1Duration },
+            { name: 'Donor Pickup to NGO Dropoff', distance: leg2, duration: leg2Duration }
+          ]
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -171,48 +367,66 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
     return Math.round(R * c * 100) / 100;
   };
 
-  // Interactive Grid Select
-  const handleGridClick = (xPercent: number, yPercent: number) => {
-    // Map grid percents to Bangalore coordinate box:
-    // Latitude: 12.92 to 13.02
-    // Longitude: 77.53 to 77.65
-    const latMin = 12.92;
-    const latMax = 13.02;
-    const lonMin = 77.53;
-    const lonMax = 77.65;
+  // Compile active polyline route coordinates
+  const getPolylineCoords = () => {
+    if (activeDonation && assignedNgo && assignedNgo.latitude !== null && assignedNgo.longitude !== null) {
+      const donorLatVal = activeDonation.latitude ?? Number(selectedLat);
+      const donorLonVal = activeDonation.longitude ?? Number(selectedLon);
+      return [
+        { latitude: donorLatVal, longitude: donorLonVal },
+        { latitude: assignedNgo.latitude, longitude: assignedNgo.longitude }
+      ];
+    } else if (ngos.length > 0) {
+      // Demo fallback route to the closest NGO
+      let closestNgo = ngos[0];
+      let minDistance = Infinity;
+      const donorLatVal = Number(selectedLat);
+      const donorLonVal = Number(selectedLon);
 
-    const computedLat = (latMax - (yPercent / 100) * (latMax - latMin)).toFixed(4);
-    const computedLon = (lonMin + (xPercent / 100) * (lonMax - lonMin)).toFixed(4);
+      ngos.forEach(ngo => {
+        if (ngo.latitude !== null && ngo.longitude !== null) {
+          const dist = getLocalHaversine(donorLatVal, donorLonVal, ngo.latitude, ngo.longitude);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestNgo = ngo;
+          }
+        }
+      });
 
-    setSelectedLat(computedLat);
-    setSelectedLon(computedLon);
-    setValidationResult(null);
+      if (closestNgo && closestNgo.latitude !== null && closestNgo.longitude !== null) {
+        return [
+          { latitude: donorLatVal, longitude: donorLonVal },
+          { latitude: closestNgo.latitude, longitude: closestNgo.longitude }
+        ];
+      }
+    }
+    return [];
   };
 
-  // Helper to place markers in percentage bounds of grid
-  // Lat range [12.92, 13.02], Lon range [77.53, 77.65]
-  const getGridPosition = (latStr: string, lonStr: string) => {
-    const latVal = Number(latStr);
-    const lonVal = Number(lonStr);
-    const latMin = 12.92;
-    const latMax = 13.02;
-    const lonMin = 77.53;
-    const lonMax = 77.65;
-
-    // Percentages
-    let x = ((lonVal - lonMin) / (lonMax - lonMin)) * 100;
-    let y = ((latMax - latVal) / (latMax - latMin)) * 100;
-
-    // Clamp bounds
-    x = Math.max(2, Math.min(95, x));
-    y = Math.max(2, Math.min(95, y));
-
-    return { x: `${x}%`, y: `${y}%` };
+  // Compile map markers
+  const getMapMarkers = () => {
+    const markers = [
+      {
+        latitude: Number(selectedLat) || 12.9716,
+        longitude: Number(selectedLon) || 77.5946,
+        label: 'My Selected Pickup',
+        color: '#EF4444' // Red
+      },
+      ...ngos.map(ngo => ({
+        latitude: ngo.latitude,
+        longitude: ngo.longitude,
+        label: `NGO: ${ngo.name}`,
+        color: '#10B981' // Green
+      })),
+      ...(assignedVolunteer && assignedVolunteer.latitude !== null && assignedVolunteer.longitude !== null ? [{
+        latitude: assignedVolunteer.latitude,
+        longitude: assignedVolunteer.longitude,
+        label: `Assigned Volunteer: ${assignedVolunteer.name}`,
+        color: '#3B82F6' // Blue
+      }] : [])
+    ];
+    return markers;
   };
-
-  const currentPos = getGridPosition(selectedLat, selectedLon);
-  const donorPos = getGridPosition(donorLat, donorLon);
-  const ngoPos = getGridPosition(ngoLat, ngoLon);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -227,87 +441,22 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* Interactive Grid Map Selection Component */}
-        <View style={[styles.mapContainer, { backgroundColor: theme.dark ? '#1E293B' : '#E2E8F0', borderColor: theme.colors.border }]}>
-          <Text style={styles.gridMapLabel}>📍 Tap Map Grid to Select Coordinates</Text>
-          
-          {/* Simulated Intersections/Streets */}
-          <View style={styles.streetsOverlay}>
-            {[20, 40, 60, 80].map((val) => (
-              <View key={`h-street-${val}`} style={[styles.streetH, { top: `${val}%`, borderColor: theme.dark ? '#334155' : '#CBD5E1' }]} />
-            ))}
-            {[20, 40, 60, 80].map((val) => (
-              <View key={`v-street-${val}`} style={[styles.streetV, { left: `${val}%`, borderColor: theme.dark ? '#334155' : '#CBD5E1' }]} />
-            ))}
-          </View>
-
-          {/* Interactive touch map sector slots */}
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={(e) => {
-              // Get touch ratios on native web target
-              const nativeEvent = e.nativeEvent as any;
-              const w = nativeEvent.target.clientWidth || 300;
-              const h = nativeEvent.target.clientHeight || 250;
-              const offsetX = nativeEvent.offsetX || 0;
-              const offsetY = nativeEvent.offsetY || 0;
-              const xPercent = (offsetX / w) * 100;
-              const yPercent = (offsetY / h) * 100;
-              handleGridClick(xPercent, yPercent);
-            }}
-          />
-
-          {/* Connective Route Overlay Line segments */}
-          {activeRouteType === 'full_route' && (
-            <View style={styles.routesOverlay}>
-              {/* Volunteer (selectedLat/selectedLon) to Donor */}
-              <View style={[styles.connectLine, {
-                left: currentPos.x,
-                top: currentPos.y,
-                width: 100, // mock connector
-                borderColor: theme.colors.primary,
-                transform: [{ rotate: '45deg' }]
-              } as any]} />
-              {/* Donor to NGO */}
-              <View style={[styles.connectLine, {
-                left: donorPos.x,
-                top: donorPos.y,
-                width: 80,
-                borderColor: theme.colors.accent
-              } as any]} />
-            </View>
-          )}
-
-          {/* Selected Volunteer Location Node Pin (Blue) */}
-          <View style={[styles.markerPin, { left: currentPos.x, top: currentPos.y } as any]}>
-            <View style={[styles.pulseDot, { backgroundColor: '#3B82F644' }]} />
-            <View style={styles.pinIcon}><Navigation size={18} color="#3B82F6" /></View>
-            <View style={[styles.markerLabel, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.markerLabelText, { color: theme.colors.text }]}>Selected</Text>
-            </View>
-          </View>
-
-          {/* Donor Pin Node (Orange) */}
-          <View style={[styles.markerPin, { left: donorPos.x, top: donorPos.y } as any]}>
-            <View style={styles.pinIcon}><MapPin size={18} color={theme.colors.accent} /></View>
-            <View style={[styles.markerLabel, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.markerLabelText, { color: theme.colors.text }]}>Donor</Text>
-            </View>
-          </View>
-
-          {/* NGO Pin Node (Green) */}
-          <View style={[styles.markerPin, { left: ngoPos.x, top: ngoPos.y } as any]}>
-            <View style={styles.pinIcon}><MapPin size={18} color={theme.colors.success} /></View>
-            <View style={[styles.markerLabel, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.markerLabelText, { color: theme.colors.text }]}>NGO</Text>
-            </View>
-          </View>
-
-          <View style={styles.overlayIndicator}>
-            <Text style={styles.indicatorText}>Interactive Map Simulation</Text>
-          </View>
-        </View>
+        {/* Real OpenStreetMap Selection Component */}
+        <OSMMap
+          theme={theme}
+          latitude={Number(selectedLat) || 12.9716}
+          longitude={Number(selectedLon) || 77.5946}
+          interactive
+          onLocationSelect={(lat, lng) => {
+            setSelectedLat(lat.toFixed(4));
+            setSelectedLon(lng.toFixed(4));
+            setValidationResult(null);
+          }}
+          markers={getMapMarkers()}
+          polyline={getPolylineCoords()}
+          height={320}
+          zoom={12}
+        />
 
         {/* Input Parameters Controls */}
         <View style={[styles.settingsCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
@@ -339,17 +488,48 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
             </View>
           </View>
 
-          {/* Helper buttons */}
+          {/* Action buttons */}
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity
               id="btn-detect-location"
-              style={[styles.locBtn, { backgroundColor: theme.colors.surface }]}
+              style={[styles.locBtn, { backgroundColor: theme.colors.surface, marginRight: 8 }]}
               onPress={handleDetectLocation}
             >
               <RefreshCw size={14} color={theme.colors.primary} style={{ marginRight: 6 }} />
-              <Text style={[styles.locBtnText, { color: theme.colors.text }]}>Detect Current Location</Text>
+              <Text style={[styles.locBtnText, { color: theme.colors.text }]}>Detect Location</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              id="btn-save-profile-location"
+              style={[styles.locBtn, { backgroundColor: theme.colors.primary }]}
+              onPress={handleSaveLocation}
+              disabled={saveLoading}
+            >
+              {saveLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <MapPin size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={[styles.locBtnText, { color: '#FFFFFF' }]}>Save to Profile</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
+
+          {saveMessage && (
+            <View style={[
+              styles.validationBox,
+              {
+                backgroundColor: saveMessage.type === 'success' ? theme.colors.primary + '1F' : theme.colors.error + '1F',
+                borderColor: saveMessage.type === 'success' ? theme.colors.primary : theme.colors.error,
+                marginTop: 10
+              }
+            ]}>
+              <Text style={{ fontSize: 11, color: theme.colors.text, fontWeight: '600' }}>
+                {saveMessage.text}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Validation Checks outcomes */}
@@ -398,7 +578,7 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
           </View>
 
           <Text style={[styles.bodyText, { color: theme.colors.textSecondary, marginBottom: 10 }]}>
-            Computes distance to donor pickup point ({donorLat}, {donorLon}) via great-circle algorithm.
+            Computes distance from your selected pickup point to the nearest active NGO center.
           </Text>
 
           <TouchableOpacity
@@ -411,7 +591,7 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
 
           {distResult !== null && (
             <View style={[styles.resultBox, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.resultLabel, { color: theme.colors.textSecondary }]}>Calculated Haversine Distance:</Text>
+              <Text style={[styles.resultLabel, { color: theme.colors.textSecondary }]}>Calculated Distance:</Text>
               <Text style={[styles.resultValue, { color: theme.colors.text }]}>{distResult.toFixed(2)} km</Text>
             </View>
           )}
@@ -425,7 +605,7 @@ export const MapsPlaygroundScreen: React.FC<MapsPlaygroundScreenProps> = ({ them
           </View>
 
           <Text style={[styles.bodyText, { color: theme.colors.textSecondary, marginBottom: 10 }]}>
-            Plans route details: Volunteer ({selectedLat}, {selectedLon}) ➔ Donor ({donorLat}, {donorLon}) ➔ NGO ({ngoLat}, {ngoLon}).
+            Plans route details: Volunteer ➔ Your Selected Location ➔ Closest NGO Center.
           </Text>
 
           <TouchableOpacity
@@ -496,106 +676,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40
-  },
-  mapContainer: {
-    height: 280,
-    width: '100%',
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-    marginBottom: 16
-  },
-  gridMapLabel: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-    zIndex: 10
-  },
-  streetsOverlay: {
-    ...StyleSheet.absoluteFillObject
-  },
-  streetH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderBottomWidth: 1.5,
-    borderStyle: 'solid'
-  },
-  streetV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRightWidth: 1.5,
-    borderStyle: 'solid'
-  },
-  routesOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 2
-  },
-  connectLine: {
-    position: 'absolute',
-    borderBottomWidth: 3,
-    borderStyle: 'dashed',
-    height: 1
-  },
-  markerPin: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 60,
-    marginLeft: -30,
-    marginTop: -24,
-    zIndex: 5
-  },
-  pulseDot: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16
-  },
-  pinIcon: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1
-  },
-  markerLabel: {
-    marginTop: 2,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1
-  },
-  markerLabelText: {
-    fontSize: 7.5,
-    fontWeight: '700'
-  },
-  overlayIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
-  },
-  indicatorText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '600'
   },
   settingsCard: {
     padding: 14,

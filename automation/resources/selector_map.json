@@ -1,0 +1,59 @@
+{
+  "login": {
+    "emailInput": "id=input-email",
+    "passwordInput": "id=input-password",
+    "submitButton": "id=btn-login-submit",
+    "roleSelector": "id=selector-role",
+    "errorMessage": "id=text-login-error",
+    "otpInput": "id=input-otp",
+    "otpSubmitButton": "id=btn-otp-submit",
+    "forgotPasswordLink": "id=link-forgot-password",
+    "showPasswordToggle": "id=btn-show-password"
+  },
+  "dashboard": {
+    "statsTitle": "id=header-stats-title",
+    "profileAvatar": "id=header-profile-avatar",
+    "logoutButton": "id=btn-logout",
+    "notificationBell": "id=btn-notification-bell",
+    "notificationBadge": "id=badge-notification-count",
+    "sideMenuBtn": "id=btn-side-menu"
+  },
+  "profile": {
+    "editProfileBtn": "id=btn-edit-profile",
+    "nameInput": "id=input-profile-name",
+    "phoneInput": "id=input-profile-phone",
+    "orgInput": "id=input-profile-org",
+    "addressInput": "id=input-profile-address",
+    "bioInput": "id=input-profile-bio",
+    "saveBtn": "id=btn-save-profile",
+    "cancelBtn": "id=btn-cancel-profile",
+    "profilePicBtn": "id=btn-upload-profile-pic",
+    "successSnackbar": "id=snackbar-success",
+    "errorSnackbar": "id=snackbar-error"
+  },
+  "donation": {
+    "createDonationBtn": "id=btn-create-donation",
+    "foodNameInput": "id=input-food-name",
+    "quantityInput": "id=input-quantity",
+    "expiryInput": "id=input-expiry",
+    "addressInput": "id=input-pickup-address",
+    "categoryDropdown": "id=dropdown-food-category",
+    "submitDonationBtn": "id=btn-submit-donation",
+    "searchInput": "id=input-search-donations",
+    "filterBtn": "id=btn-filter",
+    "statusFilterAvailable": "id=filter-status-available",
+    "donationCard": "~donation-card",
+    "deleteBtn": "id=btn-delete-donation",
+    "confirmDeleteBtn": "id=btn-confirm-delete",
+    "editBtn": "id=btn-edit-donation"
+  },
+  "navigation": {
+    "homeTab": "id=tab-home",
+    "donationsTab": "id=tab-donations",
+    "profileTab": "id=tab-profile",
+    "notificationsTab": "id=tab-notifications",
+    "adminTab": "id=tab-admin",
+    "backBtn": "id=btn-back",
+    "sideMenuBtn": "id=btn-side-menu"
+  }
+}

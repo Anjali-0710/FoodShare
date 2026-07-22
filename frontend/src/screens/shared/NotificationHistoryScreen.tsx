@@ -207,7 +207,7 @@ export const NotificationHistoryScreen: React.FC<NotificationHistoryScreenProps>
       ) : filteredHistory.length === 0 ? (
         <View style={styles.center}>
           <Inbox size={48} color={theme.colors.textSecondary} style={{ marginBottom: 16, opacity: 0.5 }} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No logs found</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications available</Text>
           <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
             No notification records matched your filter settings.
           </Text>

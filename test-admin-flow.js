@@ -61,9 +61,20 @@ async function runTests() {
     if (!regData.success) {
       throw new Error(`Temp user registration failed: ${regData.message}`);
     }
-    const tempDonorToken = regData.token;
-    const tempUserId = regData.user.id || regData.user._id;
-    console.log(`✅ Temporary user registered! ID: ${tempUserId}`);
+
+    // Verify OTP to get token and active user object
+    const verifyRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: tempUserEmail, code: regData.code })
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) {
+      throw new Error(`Temp user OTP verification failed: ${verifyData.message}`);
+    }
+    const tempDonorToken = verifyData.token;
+    const tempUserId = verifyData.user.id || verifyData.user._id;
+    console.log(`✅ Temporary user registered and OTP verified! ID: ${tempUserId}`);
 
     // 4. Retrieve Users Directory
     console.log('\nStep 4: Fetching users list via Admin API...');

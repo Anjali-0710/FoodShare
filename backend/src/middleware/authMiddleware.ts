@@ -5,8 +5,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ocsgzbmnnldpcsbfgocz.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jc2d6Ym1ubmxkcGNzYmZnb2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTgyMTIsImV4cCI6MjA2NTQ5NDIxMn0.iwtZjMhPxLPE-F9FGGVIqFEPCMUo05PodIq1LmIMQzk';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_NdZzQBEthlCcKXp5c-tEQg_o5davYD8';
 
 // Use service role if available, else anon key for token verification
 const supabaseAdmin = createClient(
@@ -22,6 +22,10 @@ export interface AuthenticatedRequest extends Request {
     name: string;
   };
 }
+
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'foodshare-super-secret-key';
 
 export const protect = async (
   req: AuthenticatedRequest,
@@ -42,40 +46,62 @@ export const protect = async (
   }
 
   try {
-    // Verify Supabase JWT by fetching the user
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    let user: any = null;
+    let isSupabase = false;
 
-    if (error || !user) {
-      return res.status(401).json({ success: false, message: 'Not authorized, token invalid or expired' });
+    // Try verifying with Supabase auth client first
+    try {
+      const { data, error } = await supabaseAdmin.auth.getUser(token);
+      if (!error && data?.user) {
+        user = data.user;
+        isSupabase = true;
+      }
+    } catch (supabaseErr) {
+      // Supabase verification error, fallback to local verification
     }
 
-    // Fetch user profile from profiles table to get role and name
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, role, email')
-      .eq('id', user.id)
-      .single();
+    if (isSupabase && user) {
+      // Fetch user profile from profiles table to get role and name
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, name, role, email')
+        .eq('id', user.id)
+        .single();
 
-    if (profileError || !profile) {
-      // Allow request with basic info even if profile not found
-      req.user = {
-        id: user.id,
-        email: user.email || '',
-        role: 'donor', // default fallback
-        name: user.user_metadata?.name || '',
-      };
+      if (profileError || !profile) {
+        // Allow request with basic info even if profile not found
+        req.user = {
+          id: user.id,
+          email: user.email || '',
+          role: 'donor', // default fallback
+          name: user.user_metadata?.name || '',
+        };
+      } else {
+        req.user = {
+          id: profile.id,
+          email: profile.email || user.email || '',
+          role: profile.role as 'donor' | 'ngo' | 'volunteer' | 'admin',
+          name: profile.name || '',
+        };
+      }
     } else {
-      req.user = {
-        id: profile.id,
-        email: profile.email || user.email || '',
-        role: profile.role as 'donor' | 'ngo' | 'volunteer' | 'admin',
-        name: profile.name || '',
-      };
+      // Fallback to local JWT verification signed by authController
+      try {
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        req.user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role as 'donor' | 'ngo' | 'volunteer' | 'admin',
+          name: decoded.name || '',
+        };
+      } catch (localJwtErr) {
+        return res.status(401).json({ success: false, message: 'Not authorized, token invalid or expired' });
+      }
     }
 
     next();
   } catch (error) {
-    console.error('Supabase auth verification error:', error);
+    console.error('Auth verification error:', error);
     return res.status(401).json({ success: false, message: 'Not authorized, token invalid or expired' });
   }
 };

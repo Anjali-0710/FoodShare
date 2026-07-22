@@ -5,7 +5,7 @@ const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM = process.env.SMTP_FROM || '"FoodShare AI" <no-reply@foodshareai.com>';
+const SMTP_FROM = process.env.SMTP_FROM || '"FoodReach" <no-reply@foodshareai.com>';
 
 /**
  * Gets a Nodemailer Transporter.
@@ -25,7 +25,7 @@ const getTransporter = async () => {
   }
 
   // Fallback testing SMTP account (Ethereal Email)
-  console.info('[FoodShare Email] SMTP configurations missing in .env. Creating Ethereal testing account...');
+  console.info('[FoodReach Email] SMTP configurations missing in .env. Creating Ethereal testing account...');
   const testAccount = await nodemailer.createTestAccount();
   return nodemailer.createTransport({
     host: 'smtp.ethereal.email',
@@ -50,8 +50,8 @@ export const sendVerificationEmail = async (toEmail: string, otpCode: string): P
     const mailOptions = {
       from: SMTP_FROM,
       to: toEmail,
-      subject: 'Verify Your Email Address - FoodShare AI',
-      text: `Welcome to FoodShare AI! Your 6-digit email verification code is: ${otpCode}. This code is valid for 5 minutes.`,
+      subject: 'Verify Your Email Address - FoodReach',
+      text: `Welcome to FoodReach! Your 6-digit email verification code is: ${otpCode}. This code is valid for 5 minutes.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -129,16 +129,16 @@ export const sendVerificationEmail = async (toEmail: string, otpCode: string): P
         <body>
           <div class="container">
             <div class="header">
-              <h1>FoodShare AI</h1>
+              <h1>FoodReach</h1>
             </div>
             <div class="content">
-              <p>Welcome to FoodShare AI! To complete your registration and log in, please enter the 6-digit verification code below:</p>
+              <p>Welcome to FoodReach! To complete your registration and log in, please enter the 6-digit verification code below:</p>
               <div class="otp-box">${otpCode}</div>
               <p>This code is secure and will expire in <strong>5 minutes</strong>.</p>
               <p class="warning-text">If you did not request this, please ignore this email or contact support.</p>
             </div>
             <div class="footer">
-              FoodShare AI &copy; 2026 · Connect. Share. Reduce Waste.
+              FoodReach &copy; 2026 · Connect. Share. Reduce Waste.
             </div>
           </div>
         </body>
@@ -147,16 +147,16 @@ export const sendVerificationEmail = async (toEmail: string, otpCode: string): P
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.info(`[FoodShare Email] Verification email successfully sent to: ${toEmail}. Message ID: ${info.messageId}`);
+    console.info(`[FoodReach Email] Verification email successfully sent to: ${toEmail}. Message ID: ${info.messageId}`);
 
     // If using Ethereal Email, log the testing mailbox preview URL
     if (nodemailer.getTestMessageUrl(info)) {
-      console.info(`[FoodShare Email] Test mailbox preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+      console.info(`[FoodReach Email] Test mailbox preview URL: ${nodemailer.getTestMessageUrl(info)}`);
     }
 
     return true;
   } catch (error) {
-    console.error(`[FoodShare Email] Failed to send verification email to: ${toEmail}`, error);
+    console.error(`[FoodReach Email] Failed to send verification email to: ${toEmail}`, error);
     return false;
   }
 };

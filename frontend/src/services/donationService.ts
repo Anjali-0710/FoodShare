@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { NotificationService } from './notificationService';
 
 export interface DonationItem {
   id: string;
@@ -23,6 +24,9 @@ export interface DonationItem {
   freshnessScore: number;
   qrCode: string;
   createdAt: string;
+  ngoDetails?: { name: string; contactNumber?: string; email?: string; address?: string; latitude?: number; longitude?: number };
+  volunteerDetails?: { name: string; contactNumber?: string; email?: string };
+  donorDetails?: { name: string; contactNumber?: string; email?: string };
 }
 
 // Convert DB row → app DonationItem
@@ -128,7 +132,36 @@ export class DonationService {
       .single();
 
     if (error) throw new Error(error.message);
-    return mapRow(data);
+    const donation = mapRow(data);
+
+    // Create notification for donor
+    await NotificationService.createNotification({
+      userId: donationData.donorId,
+      title: 'Donation Listed! 🍎',
+      message: `Your food offer for ${donationData.quantity} ${donationData.unit} of ${donationData.foodType} has been listed.`,
+      type: 'donation_created',
+      relatedDonationId: donation.id,
+    }).catch(err => console.error('Failed to create donor notification:', err));
+
+    // Create notification for all NGOs
+    try {
+      const { data: ngos } = await supabase.from('profiles').select('id').eq('role', 'ngo');
+      if (ngos) {
+        for (const ngo of ngos) {
+          await NotificationService.createNotification({
+            userId: ngo.id,
+            title: 'New Donation Available!',
+            message: `A fresh donation of ${donationData.quantity} ${donationData.unit} of ${donationData.foodType} is available for acceptance.`,
+            type: 'new_donation',
+            relatedDonationId: donation.id,
+          }).catch(err => console.error(`Failed to notify NGO ${ngo.id}:`, err));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to retrieve or notify NGOs:', err);
+    }
+
+    return donation;
   }
 
   /**
@@ -150,7 +183,29 @@ export class DonationService {
       .single();
 
     if (error) throw new Error(error.message);
-    return mapRow(data);
+    const updatedDonation = mapRow(data);
+
+    if (status === 'Accepted' && extraData?.ngoId) {
+      // Notification for Donor
+      await NotificationService.createNotification({
+        userId: updatedDonation.donorId,
+        title: 'Donation Accepted!',
+        message: `${extraData.ngoName || 'An NGO'} has accepted your donation of ${updatedDonation.quantity} ${updatedDonation.unit} of ${updatedDonation.foodType}.`,
+        type: 'accepted',
+        relatedDonationId: updatedDonation.id,
+      }).catch(err => console.error('Failed to notify donor on acceptance:', err));
+
+      // Notification for NGO
+      await NotificationService.createNotification({
+        userId: extraData.ngoId,
+        title: 'Donation Accepted',
+        message: `You accepted donation: ${updatedDonation.quantity} ${updatedDonation.unit} of ${updatedDonation.foodType}.`,
+        type: 'accepted',
+        relatedDonationId: updatedDonation.id,
+      }).catch(err => console.error('Failed to notify NGO on acceptance:', err));
+    }
+
+    return updatedDonation;
   }
 
   /**

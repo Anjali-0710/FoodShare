@@ -29,6 +29,8 @@ import { RootState } from '../../store';
 import { updateDonationInList } from '../../store/donationSlice';
 import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
+import OSMMap from '../../components/OSMMap';
+import { supabase } from '../../services/supabase';
 
 interface DonationDetailScreenProps {
   theme: AppTheme;
@@ -65,9 +67,9 @@ const MOCK_DETAIL: any = {
   temperature: 26,
   createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
   bestBeforeDate: new Date(Date.now() + 4 * 3600000).toISOString(),
-  donorDetails: { name: 'Green Bakery & Cafe', contactNumber: '+919876543210', email: 'donor@foodshare.com' },
-  ngoDetails: { name: 'Care & Feed Foundation NGO', contactNumber: '+919999888877', email: 'ngo@foodshare.com' },
-  volunteerDetails: { name: 'Rohan Sharma', contactNumber: '+919555444333', email: 'volunteer@foodshare.com' },
+  donorDetails: { name: 'Green Bakery & Cafe', contactNumber: '+919876543210', email: 'donor@foodreach.com' },
+  ngoDetails: { name: 'Care & Feed Foundation NGO', contactNumber: '+919999888877', email: 'ngo@foodreach.com' },
+  volunteerDetails: { name: 'Rohan Sharma', contactNumber: '+919555444333', email: 'volunteer@foodreach.com' },
 };
 
 export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ theme, navigate }) => {
@@ -86,8 +88,51 @@ export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ them
       const id = activeItem.id || (activeItem as any)._id;
       const data = await DonationService.getDonations();
       const found = data.find((d: any) => d.id === id);
-      if (found) setDonation(found);
-      else setDonation({ ...MOCK_DETAIL, ...activeItem });
+      if (found) {
+        // Fetch additional details if they exist in Supabase
+        if (found.ngoId) {
+          try {
+            const { data: ngoProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number, email, address, latitude, longitude')
+              .eq('id', found.ngoId)
+              .single();
+            if (ngoProfile) {
+              found.ngoDetails = {
+                name: ngoProfile.name,
+                contactNumber: ngoProfile.contact_number,
+                email: ngoProfile.email,
+                address: ngoProfile.address,
+                latitude: ngoProfile.latitude,
+                longitude: ngoProfile.longitude,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching NGO profile:', e);
+          }
+        }
+        if (found.volunteerId) {
+          try {
+            const { data: volunteerProfile } = await supabase
+              .from('profiles')
+              .select('name, contact_number, email')
+              .eq('id', found.volunteerId)
+              .single();
+            if (volunteerProfile) {
+              found.volunteerDetails = {
+                name: volunteerProfile.name,
+                contactNumber: volunteerProfile.contact_number,
+                email: volunteerProfile.email,
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching volunteer profile:', e);
+          }
+        }
+        setDonation(found);
+      } else {
+        setDonation({ ...MOCK_DETAIL, ...activeItem });
+      }
     } catch {
       setDonation({ ...MOCK_DETAIL, ...activeItem });
     } finally {
@@ -239,6 +284,22 @@ export const DonationDetailScreen: React.FC<DonationDetailScreenProps> = ({ them
               <Text style={[styles.notesLabel, { color: theme.colors.textSecondary }]}>Additional Notes</Text>
               <Text style={[styles.notesText, { color: theme.colors.text }]}>{donation.additionalNotes}</Text>
             </View>
+          )}
+          {/* Show map if we have real coordinates saved */}
+          {((donation.latitude && donation.longitude) || (donation.gpsLocation?.latitude && donation.gpsLocation?.longitude)) && (
+            <OSMMap
+              theme={theme}
+              latitude={donation.latitude ?? donation.gpsLocation?.latitude}
+              longitude={donation.longitude ?? donation.gpsLocation?.longitude}
+              markers={[{
+                latitude: donation.latitude ?? donation.gpsLocation?.latitude,
+                longitude: donation.longitude ?? donation.gpsLocation?.longitude,
+                label: 'Pickup Point',
+                color: theme.colors.primary
+              }]}
+              height={200}
+              zoom={15}
+            />
           )}
         </View>
 

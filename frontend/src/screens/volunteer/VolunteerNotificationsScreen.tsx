@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { ArrowLeft, Bell, CheckCheck, Package, Truck, Award } from 'lucide-react-native';
 import { RootState } from '../../store';
-import { markNotificationRead, markAllNotificationsRead } from '../../store/volunteerSlice';
+import NotificationService from '../../services/notificationService';
 import { AppTheme } from '../../theme/theme';
 
 interface VolunteerNotificationsScreenProps {
@@ -17,15 +17,50 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
   theme,
   navigate,
 }) => {
-  const dispatch = useDispatch();
-  const { notifications, unreadCount } = useSelector((state: RootState) => state.volunteer);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleMarkAllRead = () => {
-    dispatch(markAllNotificationsRead());
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const data = await NotificationService.getNotifications(user.id);
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to fetch volunteer notifications:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
   };
 
-  const handleMarkRead = (id: string) => {
-    dispatch(markNotificationRead(id));
+  const handleMarkAllRead = async () => {
+    if (!user?.id) return;
+    try {
+      await NotificationService.markAllRead(user.id);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err);
+    }
+  };
+
+  const handleMarkRead = async (id: string) => {
+    try {
+      await NotificationService.markRead(id);
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
   };
 
   const getIcon = (type: string) => {
@@ -55,44 +90,50 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
     return new Date(isoString).toLocaleDateString();
   };
 
-  const renderNotificationItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.notifCard,
-        {
-          backgroundColor: theme.colors.card,
-          borderColor: item.read ? theme.colors.border : theme.colors.primary + '33',
-        },
-      ]}
-      onPress={() => handleMarkRead(item.id)}
-      disabled={item.read}
-      id={`notif-item-${item.id}`}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[styles.iconBox, { backgroundColor: theme.colors.background }]}>
-          {getIcon(item.type)}
-        </View>
-        <View style={styles.textDetails}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.cardTitle, { color: theme.colors.text }, !item.read && styles.boldText]}>
-              {item.title}
-            </Text>
-            <Text style={[styles.timeText, { color: theme.colors.textSecondary }]}>
-              {getFormattedTime(item.timestamp)}
+  const renderNotificationItem = ({ item }: { item: any }) => {
+    const notifId = item.id || item._id;
+    const notifTime = item.timestamp || item.createdAt;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.notifCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: item.read ? theme.colors.border : theme.colors.primary + '33',
+          },
+        ]}
+        onPress={() => handleMarkRead(notifId)}
+        disabled={item.read}
+        id={`notif-item-${notifId}`}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.iconBox, { backgroundColor: theme.colors.background }]}>
+            {getIcon(item.type)}
+          </View>
+          <View style={styles.textDetails}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.cardTitle, { color: theme.colors.text }, !item.read && styles.boldText]}>
+                {item.title}
+              </Text>
+              <Text style={[styles.timeText, { color: theme.colors.textSecondary }]}>
+                {getFormattedTime(notifTime)}
+              </Text>
+            </View>
+            <Text style={[styles.messageText, { color: theme.colors.textSecondary }]}>
+              {item.message}
             </Text>
           </View>
-          <Text style={[styles.messageText, { color: theme.colors.textSecondary }]}>
-            {item.message}
-          </Text>
         </View>
-      </View>
-      {!item.read && (
-        <View style={styles.unreadIndicator}>
-          <View style={[styles.blueDot, { backgroundColor: theme.colors.primary }]} />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+        {!item.read && (
+          <View style={styles.unreadIndicator}>
+            <View style={[styles.blueDot, { backgroundColor: theme.colors.primary }]} />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -122,10 +163,14 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
       </View>
 
       {/* Main Content */}
-      {notifications.length === 0 ? (
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Bell size={48} color={theme.colors.textSecondary} style={{ marginBottom: 16, opacity: 0.5 }} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>All quiet here</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications available</Text>
           <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
             You will receive transport updates, reminders, and award highlights here.
           </Text>
@@ -133,9 +178,10 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
       ) : (
         <FlatList
           data={notifications}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item._id}
           renderItem={renderNotificationItem}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
         />
       )}
     </View>

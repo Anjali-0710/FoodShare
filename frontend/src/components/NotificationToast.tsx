@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Animated, StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import { Bell, X } from 'lucide-react-native';
 import { AppTheme } from '../theme/theme';
 
@@ -23,7 +23,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       // Slide Down
       Animated.spring(slideY, {
         toValue: 20, // Offset from top
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         bounciness: 8
       }).start();
 
@@ -42,7 +42,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     Animated.timing(slideY, {
       toValue: -150,
       duration: 350,
-      useNativeDriver: true
+      useNativeDriver: Platform.OS !== 'web'
     }).start(() => {
       onClose();
     });
@@ -86,11 +86,18 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 6
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 4px 5px rgba(0, 0, 0, 0.15)'
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        elevation: 6
+      }
+    })
   },
   contentRow: {
     flexDirection: 'row',

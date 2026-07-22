@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { View, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { store, RootState } from './src/store';
@@ -6,11 +6,14 @@ import { lightTheme, darkTheme } from './src/theme/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import NotificationToast from './src/components/NotificationToast';
 import { supabase } from './src/services/supabase';
+import { NotificationService } from './src/services/notificationService';
 import { AuthService } from './src/services/authService';
 import { setCredentials, logout } from './src/store/authSlice';
+import { useSessionTimeout } from './src/hooks/useSessionTimeout';
 
 // Programmatically load Google Fonts Outfit web asset
 if (typeof document !== 'undefined') {
+  document.title = 'FoodReach';
   const fontLinkId = 'google-fonts-outfit-ui';
   if (!document.getElementById(fontLinkId)) {
     const link = document.createElement('link');
@@ -55,6 +58,15 @@ const AppContent: React.FC = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // ── Session timeout warning callback ─────────────────────────────────────
+  const handleSessionWarning = useCallback(() => {
+    setToastMessage('⏳ Your session will expire in 1 minute due to inactivity. Please interact to stay signed in.');
+    setToastVisible(true);
+  }, []);
+
+  // ── 15-minute inactivity session timeout (web + native) ───────────────────
+  useSessionTimeout(handleSessionWarning);
 
   // Selected Theme Choice
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
@@ -122,33 +134,20 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Simulate Push Notifications (FCM) based on role/actions to enhance UX
+  // Real-time Database Notifications subscription
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated || !user?.id) return;
 
-    let notificationTimer: NodeJS.Timeout;
+    const channel = NotificationService.subscribeToNotifications(user.id, (notif) => {
+      setToastMessage(`🔔 ${notif.title}: ${notif.message}`);
+      setToastVisible(true);
+    });
 
-    if (user.role === 'donor') {
-      // Donors get notified when an NGO claims food
-      notificationTimer = setTimeout(() => {
-        setToastMessage('🔔 Care & Feed Foundation NGO has accepted your surplus Cooked Food donation!');
-        setToastVisible(true);
-      }, 10000); // Trigger 10 seconds in
-    } else if (user.role === 'ngo') {
-      // NGOs get notified when a volunteer starts delivery
-      notificationTimer = setTimeout(() => {
-        setToastMessage('🚚 Volunteer Rohan Sharma has claimed your accepted Fruits delivery! ETA: 8 Mins');
-        setToastVisible(true);
-      }, 12000);
-    } else if (user.role === 'volunteer') {
-      // Volunteers get warning if food decay is predicted
-      notificationTimer = setTimeout(() => {
-        setToastMessage('⚠️ Expiry Warning: A Cooked Food cargo is at 28°C and decays in 3 hours. Please pick up promptly!');
-        setToastVisible(true);
-      }, 8000);
-    }
-
-    return () => clearTimeout(notificationTimer);
+    return () => {
+      if (channel) {
+        NotificationService.unsubscribe(channel);
+      }
+    };
   }, [isAuthenticated, user]);
 
   return (

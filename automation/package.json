@@ -1,0 +1,22 @@
+{
+  "name": "foodreach-appium-automation",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Appium mobile automation framework for FoodReach Android App",
+  "main": "runners/runTests.ts",
+  "scripts": {
+    "test": "ts-node runners/runTests.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "webdriverio": "^8.39.0",
+    "exceljs": "^4.4.0",
+    "fs-extra": "^11.2.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.19",
+    "@types/fs-extra": "^11.0.4"
+  }
+}

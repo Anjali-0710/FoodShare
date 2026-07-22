@@ -6,41 +6,7 @@ import { getDbStatus } from '../config/db';
 import { mockUsers } from '../config/mockDb';
 
 // Global mock list to persist notifications while backend is running in-memory
-export const mockNotifications: any[] = [
-  {
-    _id: 'mock_notif_1',
-    userId: 'usr_ngo_1',
-    role: 'ngo',
-    type: 'new_donation',
-    title: 'New Donation Available! 🍎',
-    message: '80 Plates of Fresh Biryani listed near Koramangala.',
-    donationId: 'c002',
-    read: false,
-    createdAt: new Date(Date.now() - 30 * 60000)
-  },
-  {
-    _id: 'mock_notif_2',
-    userId: 'usr_volunteer_1',
-    role: 'volunteer',
-    type: 'pickup_reminder',
-    title: 'Pickup Reminder ⏰',
-    message: 'Remember to pick up your assigned bread donation from Modern Bakery.',
-    donationId: 'c001',
-    read: false,
-    createdAt: new Date(Date.now() - 120 * 60000)
-  },
-  {
-    _id: 'mock_notif_3',
-    userId: 'usr_donor_1',
-    role: 'donor',
-    type: 'accepted',
-    title: 'Donation Accepted! 🎉',
-    message: 'Your surplus mixed vegetables donation has been accepted by Care & Feed Foundation NGO.',
-    donationId: 'c003',
-    read: true,
-    createdAt: new Date(Date.now() - 10 * 3600000)
-  }
-];
+export const mockNotifications: any[] = [];
 
 // Helper to create notifications programmatically
 export const createNotificationInternal = async (params: {

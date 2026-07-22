@@ -5,7 +5,10 @@ const SUPABASE_ANON_KEY = 'sb_publishable_NdZzQBEthlCcKXp5c-tEQg_o5davYD8';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: false,
+    persistSession: true,          // ✅ keep session alive across page refreshes
+    storageKey: 'fs_supabase_auth', // unique key in localStorage
+    autoRefreshToken: true,         // silently renew token before it expires
+    detectSessionInUrl: true,       // handle OAuth / magic-link redirects
   },
 });
 

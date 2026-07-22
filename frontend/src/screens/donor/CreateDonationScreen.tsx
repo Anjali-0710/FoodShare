@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Image, Platform } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { ArrowLeft, PlusCircle, BrainCircuit, Users, Thermometer, CalendarClock, PhoneCall } from 'lucide-react-native';
+import { ArrowLeft, PlusCircle, BrainCircuit, Users, Thermometer, CalendarClock, PhoneCall, MapPin } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { addDonation } from '../../store/donationSlice';
 import { DonationService } from '../../services/donationService';
 import { AppTheme } from '../../theme/theme';
 import { predictFreshness } from '../../services/aiService';
+import OSMMap from '../../components/OSMMap';
+import * as Location from 'expo-location';
 
 interface CreateDonationScreenProps {
   theme: AppTheme;
@@ -28,7 +30,12 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
   const [contactNumber, setContactNumber] = useState(user?.contactNumber || '');
   const [notes, setNotes] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  
+
+  // Map / Location
+  const [selectedLat, setSelectedLat] = useState<number | null>(user?.gpsLocation?.latitude ?? null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(user?.gpsLocation?.longitude ?? null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
   // States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +54,31 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
     };
     setImageUrl(defaultImages[foodType] || '');
   }, [foodType]);
+
+  // Auto-detect user's current location on mount
+  useEffect(() => {
+    if (selectedLat && selectedLng) return; // already have coords
+    (async () => {
+      try {
+        setLocationLoading(true);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          setSelectedLat(loc.coords.latitude);
+          setSelectedLng(loc.coords.longitude);
+        }
+      } catch (_) {
+        // Permission denied or unavailable — map will centre on Bengaluru default
+      } finally {
+        setLocationLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleMapLocationSelect = (lat: number, lng: number) => {
+    setSelectedLat(lat);
+    setSelectedLng(lng);
+  };
 
   const handlePickImage = () => {
     if (typeof document !== 'undefined') {
@@ -120,8 +152,8 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
     const preparationTime = new Date(Date.now() - Number(prepHoursAgo) * 60 * 60 * 1000);
     const bestBeforeDate = new Date(Date.now() + Number(bestBeforeHours) * 60 * 60 * 1000);
 
-    const latitude = user?.gpsLocation?.latitude || 28.6139 + (Math.random() - 0.5) * 0.02;
-    const longitude = user?.gpsLocation?.longitude || 77.2090 + (Math.random() - 0.5) * 0.02;
+    const latitude = selectedLat ?? (user?.gpsLocation?.latitude ?? 12.9716);
+    const longitude = selectedLng ?? (user?.gpsLocation?.longitude ?? 77.5946);
 
     try {
       const donation = await DonationService.createDonation({
@@ -331,6 +363,33 @@ export const CreateDonationScreen: React.FC<CreateDonationScreenProps> = ({ them
           multiline
           numberOfLines={2}
         />
+
+        {/* OpenStreetMap Location Picker */}
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Pickup Location on Map</Text>
+        {locationLoading ? (
+          <View style={[styles.mapLoadingBox, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={[styles.mapLoadingText, { color: theme.colors.textSecondary }]}>Detecting your location…</Text>
+          </View>
+        ) : (
+          <OSMMap
+            theme={theme}
+            latitude={selectedLat ?? 12.9716}
+            longitude={selectedLng ?? 77.5946}
+            interactive
+            onLocationSelect={handleMapLocationSelect}
+            height={220}
+            zoom={15}
+          />
+        )}
+        {selectedLat && selectedLng && (
+          <View style={[styles.coordsRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <MapPin size={12} color={theme.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={[styles.coordsText, { color: theme.colors.textSecondary }]}>
+              {selectedLat.toFixed(5)}, {selectedLng.toFixed(5)}
+            </Text>
+          </View>
+        )}
 
         <TextInput
           id="input-create-notes"
@@ -752,6 +811,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
     fontSize: 10.5,
     marginTop: 4
-  }
+  },
+  mapLoadingBox: {
+    height: 100,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 12,
+  },
+  mapLoadingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  },
+  coordsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  coordsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+  },
 });
 export default CreateDonationScreen;

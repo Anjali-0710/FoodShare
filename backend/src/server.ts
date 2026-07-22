@@ -1,19 +1,21 @@
+import dotenv from 'dotenv';
+// Load Environment Configurations
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import authRoutes from './routes/authRoutes';
 import donationRoutes from './routes/donationRoutes';
 import volunteerRoutes from './routes/volunteerRoutes';
 import adminRoutes from './routes/adminRoutes';
-import aiRoutes from './routes/aiRoutes';
+import aiRoutes from './routes/ai';
 import notificationRoutes from './routes/notificationRoutes';
 import locationRoutes from './routes/locationRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import { notificationInterceptor } from './middleware/notificationInterceptor';
-
-// Load Environment Configurations
-dotenv.config();
+import { seedMockDatabase } from './config/mockDb';
+import { testGroqConnection } from './services/groqService';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +29,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(notificationInterceptor as any);
+
+app.use((req, res, next) => {
+  const authPresent = req.headers.authorization ? 'YES' : 'NO';
+  res.on('finish', () => {
+    console.log(`[Request Log] Method: ${req.method} | URL: ${req.originalUrl || req.url} | Status Code: ${res.statusCode} | Authorization Present: ${authPresent}`);
+  });
+  next();
+});
 
 // Basic Health Check Route
 app.get('/health', (req, res) => {
@@ -66,8 +76,19 @@ app.get('*', (req, res) => {
 
 // Startup
 const startServer = async () => {
+  // Seed mock database for offline/demonstration flow compatibility
+  await seedMockDatabase();
+
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) {
+    console.warn('\n⚠️  [WARN] GROQ_API_KEY is not configured in backend .env. AI chatbot queries will fail until a valid key is provided.\n');
+  }
+
+  // Run startup connection audit test
+  await testGroqConnection();
+
   app.listen(PORT, () => {
-    console.log(`🚀 FoodShare AI Backend listening on http://localhost:${PORT}`);
+    console.log(`🚀 FoodReach Backend listening on http://localhost:${PORT}`);
     console.log(`📊 Database: Supabase PostgreSQL (always-on)`);
     console.log(`🔐 Auth: Supabase Auth`);
   });

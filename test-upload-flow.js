@@ -32,12 +32,13 @@ async function runTests() {
 
     // 2. Register test Donor
     console.log('Step 2: Registering a test Donor for upload authorization...');
+    const testEmail = `uploader-${Date.now()}@foodshare.com`;
     const regRes = await fetch(`${BACKEND_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Upload Test Facility',
-        email: `uploader-${Date.now()}@foodshare.com`,
+        email: testEmail,
         password: 'password123',
         role: 'donor',
         contactNumber: '+919999888877',
@@ -48,8 +49,17 @@ async function runTests() {
     });
     const regData = await regRes.json();
     if (!regData.success) throw new Error(`Registration failed: ${regData.message}`);
-    const token = regData.token;
-    console.log(`✅ Test Donor registered: ${regData.user.name}\n`);
+
+    // Verify OTP to get token
+    const verifyRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testEmail, code: regData.code })
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) throw new Error(`OTP verification failed: ${verifyData.message}`);
+    const token = verifyData.token;
+    console.log(`✅ Test Donor registered and OTP verified: ${verifyData.user.name}\n`);
 
     // 3. Test Invalid Base64 Format Validation
     console.log('Step 3: Testing invalid base64 prefix header validation...');
