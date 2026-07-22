@@ -7,25 +7,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages-selenium"
-  cancel-in-progress: false
-
 jobs:
-  # ── Job 1: Build Web Bundle ────────────────────────────────────────────────
-  build-web:
-    name: Build Web Production Bundle
+  selenium-e2e:
+    name: Run Selenium Web E2E Tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -34,52 +25,40 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci
 
-      - name: Build web bundle with Expo
+      - name: Build static web bundle
         working-directory: ./frontend
         run: npm run build
         env:
           CI: false
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./frontend/dist
+      - name: Start local Web Server (localhost:3000)
+        run: |
+          npx serve -s frontend/dist -p 3000 > /tmp/serve.log 2>&1 &
+          echo "Web server started on http://localhost:3000"
+          sleep 5
 
-  # ── Job 2: Deploy to GitHub Pages ──────────────────────────────────────────
-  deploy-pages:
-    name: Build and Deploy to GitHub Pages
-    needs: build-web
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
-
-  # ── Job 3: Selenium E2E Tests ──────────────────────────────────────────────
-  selenium:
-    name: Run Selenium E2E Tests
-    runs-on: ubuntu-latest
-    needs: deploy-pages
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Verify Web Server Health
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ Local web server is live at http://localhost:3000 (HTTP 200)"
+              exit 0
+            fi
+            echo "Attempt $i: waiting for server..."
+            sleep 2
+          done
+          echo "ERROR: Server failed to start"
+          cat /tmp/serve.log
+          exit 1
 
       - name: Install Selenium test dependencies
         working-directory: ./frontend/selenium-tests
         run: npm install
 
-      - name: Setup Chrome
+      - name: Setup Chrome Browser
         uses: browser-actions/setup-chrome@v1
 
       - name: Setup ChromeDriver
@@ -89,55 +68,57 @@ jobs:
         working-directory: ./frontend/selenium-tests
         run: npm run login
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run Register E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run register
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run Donor Flow E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run donor
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run NGO Flow E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run ngo
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run Volunteer Flow E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run volunteer
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run Admin Flow E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run admin
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
       - name: Run Notifications E2E Tests
         working-directory: ./frontend/selenium-tests
         run: npm run notifications
         env:
-          BASE_URL: "https://Anjali-0710.github.io/FoodShare"
+          BASE_URL: "http://localhost:3000"
         continue-on-error: true
 
-      - name: Upload test results
+      - name: Upload Selenium Test Results Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: selenium-test-results
-          path: frontend/selenium-tests/results/
-          retention-days: 7
+          name: selenium-e2e-test-results
+          path: |
+            frontend/selenium-tests/results/
+            /tmp/serve.log
+          retention-days: 14
