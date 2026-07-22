@@ -4,13 +4,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { Builder, By, until } = require('selenium-webdriver');
+const chrome = require('selenium-webdriver/chrome');
 const assert = require('assert');
 
-const BASE_URL = 'https://YOUR_USERNAME.github.io/foodshare-ai';
+const BASE_URL = process.env.BASE_URL || 'https://Anjali-0710.github.io/FoodShare';
 const TIMEOUT  = 15000;
 
 async function buildDriver() {
-  return new Builder().forBrowser('chrome').build();
+  const options = new chrome.Options();
+  options.addArguments('--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu');
+  return new Builder().forBrowser('chrome').setChromeOptions(options).build();
 }
 
 describe('FoodReach — Register Screen E2E Tests', function () {

@@ -5,17 +5,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { Builder, By, until, Key } = require('selenium-webdriver');
+const chrome = require('selenium-webdriver/chrome');
 const assert = require('assert');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
-const BASE_URL   = 'https://YOUR_USERNAME.github.io/foodshare-ai';
+const BASE_URL   = process.env.BASE_URL || 'https://Anjali-0710.github.io/FoodShare';
 const TEST_EMAIL = 'donor@foodreach.test';
 const TEST_PASS  = 'Test@12345';
 const TIMEOUT    = 15000; // ms
 
 // ── Helper: build Chrome driver ───────────────────────────────────────────────
 async function buildDriver() {
-  return new Builder().forBrowser('chrome').build();
+  const options = new chrome.Options();
+  options.addArguments('--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu');
+  return new Builder().forBrowser('chrome').setChromeOptions(options).build();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
