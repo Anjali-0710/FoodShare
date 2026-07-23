@@ -41,7 +41,7 @@ app.use((req, res, next) => {
 // Basic Health Check Route
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'online',
+    status: 'ok',
     timestamp: new Date(),
     environment: process.env.NODE_ENV || 'development',
     database: 'supabase',
@@ -76,23 +76,29 @@ app.get('*', (req, res) => {
 
 // Startup
 const startServer = async () => {
-  // Seed mock database for offline/demonstration flow compatibility
-  await seedMockDatabase();
-
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) {
-    console.warn('\n⚠️  [WARN] GROQ_API_KEY is not configured in backend .env. AI chatbot queries will fail until a valid key is provided.\n');
-  }
-
-  // Run startup connection audit test
-  await testGroqConnection();
-
   const host = process.env.HOST || '0.0.0.0';
-  app.listen(Number(PORT), host, () => {
+
+  // 1. Start HTTP listener immediately so health checks succeed without blocking
+  const server = app.listen(Number(PORT), host, () => {
     console.log(`🚀 FoodReach Backend listening on http://${host}:${PORT}`);
     console.log(`📊 Database: Supabase PostgreSQL (always-on)`);
     console.log(`🔐 Auth: Supabase Auth`);
   });
+
+  // 2. Perform background seeding & API audits asynchronously
+  try {
+    await seedMockDatabase();
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      console.warn('\n⚠️  [WARN] GROQ_API_KEY is not configured in backend .env. AI chatbot queries will fail until a valid key is provided.\n');
+    } else {
+      await testGroqConnection();
+    }
+  } catch (initErr: any) {
+    console.warn('⚠️  Non-fatal startup initialization warning:', initErr?.message || initErr);
+  }
+
+  return server;
 };
 
 startServer().catch(err => {
