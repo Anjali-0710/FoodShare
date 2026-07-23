@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     padding: 8
   },
   headerTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   errorText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#EF4444',
     fontSize: 13,
     fontWeight: '600',
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   aiHeaderTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11.5,
     fontWeight: '800',
     marginLeft: 6,
@@ -554,23 +554,23 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   meterValue: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 20,
     fontWeight: '800'
   },
   aiStatusDesc: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 4
   },
   aiSubText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11,
     lineHeight: 15
   },
   sectionTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '800',
     marginBottom: 12
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
     borderRadius: 20
   },
   selectorText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11.5,
     fontWeight: '700'
   },
@@ -609,12 +609,12 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   unitText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 10.5,
     fontWeight: '700'
   },
   input: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     height: 44,
     borderWidth: 1,
     borderRadius: 12,
@@ -638,18 +638,18 @@ const styles = StyleSheet.create({
     marginBottom: 14
   },
   extraFormTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700'
   },
   fieldLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11,
     fontWeight: '700',
     marginBottom: 8
   },
   smallInput: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     height: 38,
     borderWidth: 1,
     borderRadius: 10,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     zIndex: 5
   },
   iconInput: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     flex: 1,
     height: 44,
     borderWidth: 1,
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)'
   },
   textArea: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
@@ -712,12 +712,12 @@ const styles = StyleSheet.create({
     marginTop: 10
   },
   ngoName: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700'
   },
   ngoSub: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11,
     marginTop: 2
   },
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   scoreText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 10,
     fontWeight: '800'
   },
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   submitBtnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15.5
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: 8
   },
   removeImageText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#FFFFFF',
     fontSize: 10.5,
     fontWeight: '700'
@@ -802,13 +802,13 @@ const styles = StyleSheet.create({
     padding: 20
   },
   uploadText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '700',
     marginTop: 8
   },
   uploadSubtext: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 10.5,
     marginTop: 4
   },
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   mapLoadingText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   coordsRow: {
     flexDirection: 'row',
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   coordsText: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
 });
 export default CreateDonationScreen;

@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   filterSection: {
     padding: 16,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     paddingVertical: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   categoryList: {
     gap: 8
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   list: {
     padding: 16
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 8.5,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   userRow: {
     flexDirection: 'row',
@@ -329,24 +329,24 @@ const styles = StyleSheet.create({
   userLabelText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   userRoleText: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   titleText: {
     fontSize: 12.5,
     fontWeight: '800',
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   messageText: {
     fontSize: 11,
     lineHeight: 15,
     marginBottom: 8,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   typeRow: {
     flexDirection: 'row',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 9.5,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   center: {
     flex: 1,
@@ -371,13 +371,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     marginBottom: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   emptyText: {
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 16,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   errorBox: {
     margin: 16,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   }
 });
 

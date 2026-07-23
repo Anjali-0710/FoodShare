@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   center: {
     flex: 1,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   stepsRow: {
     flexDirection: 'row',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
     textAlign: 'center',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   mapPlaceholder: {
     height: 200,
@@ -374,13 +374,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   placeholderDesc: {
     fontSize: 10,
     textAlign: 'center',
     lineHeight: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   qrBox: {
     padding: 14,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   qrTitle: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   qrRow: {
     flexDirection: 'row',
@@ -423,12 +423,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   qrDesc: {
     fontSize: 10,
     lineHeight: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   infoBox: {
     padding: 14,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 10,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   infoRow: {
     flexDirection: 'row',
@@ -449,12 +449,12 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   infoValue: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   recipientCard: {
     borderTopWidth: 1,
@@ -465,17 +465,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   recipientName: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   recipientContact: {
     fontSize: 11,
     marginTop: 2,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   btn: {
     height: 40,
@@ -489,13 +489,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   errorText: {
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   }
 });
 export default TrackDonationScreen;

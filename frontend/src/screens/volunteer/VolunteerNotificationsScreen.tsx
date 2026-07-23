@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   markAllBtn: {
     flexDirection: 'row',
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   markAllText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   list: {
     padding: 16,
@@ -273,21 +273,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     marginRight: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   boldText: {
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   timeText: {
     fontSize: 9,
     fontWeight: '500',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   messageText: {
     fontSize: 10.5,
     lineHeight: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   unreadIndicator: {
     position: 'absolute',
@@ -310,14 +310,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   emptyText: {
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 10,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
 });
 

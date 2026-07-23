@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   statsContainer: {
     padding: 16,
@@ -305,13 +305,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   statLabel: {
     fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   filterSection: {
     paddingHorizontal: 16,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     marginBottom: 10,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   searchBar: {
     flexDirection: 'row',
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     paddingVertical: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   categoryList: {
     paddingBottom: 6,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 10.5,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   contentList: {
     paddingBottom: 32,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   foodTitle: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   qtyBadge: {
     fontSize: 9,
@@ -385,12 +385,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 8,
     borderRadius: 8,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   locationText: {
     fontSize: 11,
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   cardFooter: {
     flexDirection: 'row',
@@ -408,12 +408,12 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   karmaEarned: {
     fontSize: 10.5,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   emptyContainer: {
     padding: 32,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
 });
 

@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   center: {
     flex: 1,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   list: {
     padding: 16
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   foodType: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   statusBadge: {
     flexDirection: 'row',
@@ -195,17 +195,17 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   details: {
     fontSize: 12,
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   address: {
     fontSize: 11,
     marginBottom: 12,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   cardFooter: {
     flexDirection: 'row',
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 10,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   receiptBtn: {
     flexDirection: 'row',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   receiptText: {
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   }
 });
 export default HistoryScreen;

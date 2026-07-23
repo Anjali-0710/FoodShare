@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   themeBtn: {
     width: 34,
@@ -353,18 +353,18 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   displayName: {
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 4,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   displayEmail: {
     fontSize: 13,
     marginBottom: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   roleBadge: {
     flexDirection: 'row',
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   successBox: {
     flexDirection: 'row',
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   errorBox: {
     borderRadius: 12,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   card: {
     borderRadius: 16,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     flex: 1,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   editBtn: {
     flexDirection: 'row',
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   editBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   fieldGroup: {
     paddingVertical: 10,
@@ -445,13 +445,13 @@ const styles = StyleSheet.create({
   fieldLabelText: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   fieldValue: {
     fontSize: 14,
     fontWeight: '500',
     paddingLeft: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   readOnlyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 20 },
   verifiedBadge: {
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   verifiedText: {
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   input: {
     height: 44,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 13,
     marginLeft: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   textArea: {
     borderWidth: 1,
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 20,
     minHeight: 64,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   editActions: {
     flexDirection: 'row',
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   cancelEditText: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   saveBtn: {
     flex: 2,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 13,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   securityRow: {
     flexDirection: 'row',
@@ -526,12 +526,12 @@ const styles = StyleSheet.create({
   securityRowText: {
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   securityRoleText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
 });
 

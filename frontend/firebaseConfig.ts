@@ -25,43 +25,35 @@ export const isFirebaseConfigured = (): boolean => {
   );
 };
 
-// Initialize Firebase services
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-
+// Initialize Firebase services conditionally only when real credentials are present
+let appInstance: any = null;
+let authInstance: any = null;
 let dbInstance: any = null;
 let storageInstance: any = null;
 
 if (isFirebaseConfigured()) {
   try {
-    dbInstance = getFirestore(app);
+    appInstance = initializeApp(firebaseConfig);
+    authInstance = getAuth(appInstance);
+    dbInstance = getFirestore(appInstance);
+    storageInstance = getStorage(appInstance);
   } catch (err) {
-    console.warn('Firebase Firestore initialization failed, using mock/offline mode:', err);
+    // Non-fatal fallback for unconfigured environments
   }
-
-  try {
-    storageInstance = getStorage(app);
-  } catch (err) {
-    console.warn('Firebase Storage initialization failed, using mock/offline mode:', err);
-  }
-} else {
-  console.warn('[firebaseConfig] Placeholder API values detected. Skipping Firebase Firestore & Storage initialization.');
 }
 
+export const app = appInstance;
+export const auth = authInstance;
 export const db = dbInstance;
 export const storage = storageInstance;
 
 export const logoutFirebase = async (): Promise<void> => {
-  console.log('[logoutFirebase] Starting signout...');
   try {
-    if (isFirebaseConfigured()) {
-      await auth.signOut();
-      console.log('[logoutFirebase] Signout completed successfully');
-    } else {
-      console.log('[logoutFirebase] Firebase not configured, skipping signout');
+    if (isFirebaseConfigured() && authInstance) {
+      await authInstance.signOut();
     }
   } catch (err) {
-    console.error('Firebase signout error:', err);
+    // Silent error handling
   }
 };
 

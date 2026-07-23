@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   title: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 32,
     fontWeight: '800',
     textAlign: 'center',
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5
   },
   subtitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 15,
     fontWeight: '500',
     textAlign: 'center',
@@ -296,13 +296,13 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   errorText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center'
   },
   fieldLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     marginRight: 4
   },
   input: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     flex: 1,
     height: 52,
     fontSize: 14.5,
@@ -355,12 +355,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   checkboxLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '600'
   },
   forgotText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '600'
   },
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   btnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15.5
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     height: 1
   },
   dividerText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 12.5,
     fontWeight: '600',
     marginHorizontal: 14
@@ -409,12 +409,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   registerBtnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontWeight: '700',
     fontSize: 14.5
   },
   footerNote: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     textAlign: 'center',
     fontSize: 11.5,
     marginTop: 36

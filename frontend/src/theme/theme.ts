@@ -35,7 +35,7 @@ export interface AppTheme {
 
 export const lightTheme: AppTheme = {
   dark: false,
-  fontFamily: '"Plus Jakarta Sans", Inter, system-ui, -apple-system, sans-serif',
+  fontFamily: 'System',
   borderRadius: 24,
   shadow: {
     shadowColor: '#0F172A',
@@ -70,7 +70,7 @@ export const lightTheme: AppTheme = {
 
 export const darkTheme: AppTheme = {
   dark: true,
-  fontFamily: '"Plus Jakarta Sans", Inter, system-ui, -apple-system, sans-serif',
+  fontFamily: 'System',
   borderRadius: 24,
   shadow: {
     shadowColor: '#000000',

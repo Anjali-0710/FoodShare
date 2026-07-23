@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   banner: {
     padding: 20,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   bannerText: {
     color: '#E2E8F0',
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 14,
     paddingHorizontal: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   center: {
     flex: 1,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   nameCol: {
     flex: 1,
@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   deliverySub: {
     fontSize: 10,
     marginTop: 2,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   scoreCol: {
     flexDirection: 'row',
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 12,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   }
 });
 export default LeaderboardScreen;

@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   interactiveBadge: {
     position: 'absolute',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
 });
 
@@ -342,13 +342,13 @@ const webStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
   errorDesc: {
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
   },
 });
 

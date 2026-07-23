@@ -377,20 +377,20 @@ const styles = StyleSheet.create({
     borderRadius: 16
   },
   title: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 28,
     fontWeight: '800',
     marginBottom: 6,
     letterSpacing: -0.5
   },
   subtitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 28
   },
   errorText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#EF4444',
     fontSize: 13,
     fontWeight: '600',
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   roleTabText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700'
   },
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     zIndex: 5
   },
   input: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     flex: 1,
     height: 52,
     borderWidth: 1,
@@ -455,13 +455,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '700',
     marginBottom: 10
   },
   descText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 11.5,
     marginBottom: 12
   },
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: 14
   },
   prefText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 10.5,
     fontWeight: '700'
   },
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   btnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15.5

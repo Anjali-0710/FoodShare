@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   center: {
     flex: 1,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
     marginBottom: 16,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   stepsRow: {
     flexDirection: 'row',
@@ -570,13 +570,13 @@ const styles = StyleSheet.create({
   stepNodeText: {
     fontSize: 9,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   stepLabelText: {
     fontSize: 7.5,
     textAlign: 'center',
     width: 48,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   statusBox: {
     padding: 12,
@@ -607,13 +607,13 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     fontWeight: '600',
     marginTop: 2,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   statVal: {
     fontSize: 12,
     fontWeight: '800',
     marginTop: 1,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   infoBox: {
     padding: 14,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     marginBottom: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   detailItem: {
     flexDirection: 'row',
@@ -640,12 +640,12 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 10.5,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   detailValue: {
     fontSize: 11,
     fontWeight: '500',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   detailDivider: {
     height: 1,
@@ -680,18 +680,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     marginBottom: 2,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   stopName: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   stopAddress: {
     fontSize: 11,
     marginTop: 2,
     lineHeight: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   phoneBtn: {
     flexDirection: 'row',
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
   phoneText: {
     fontSize: 10.5,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   actionsPanel: {
     marginTop: 10
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 13,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   flexRow: {
     flexDirection: 'row',
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 10,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   successText: {
     fontSize: 12,
@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: 20,
     paddingHorizontal: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   btn: {
     height: 40,
@@ -753,13 +753,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   },
   errorText: {
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 16,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontFamily: 'System'
   }
 });
 

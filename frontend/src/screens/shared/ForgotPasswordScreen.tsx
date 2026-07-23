@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     padding: 8
   },
   title: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 28,
     fontWeight: '800',
     marginBottom: 6,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   subtitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 14,
     marginBottom: 28,
     lineHeight: 20,
@@ -284,13 +284,13 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   errorText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center'
   },
   fieldLabel: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     marginRight: 4
   },
   input: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     flex: 1,
     height: 52,
     fontSize: 14.5,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   btnText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15.5
@@ -343,13 +343,13 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   successTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 17,
     fontWeight: '800',
     marginBottom: 10
   },
   successText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     textAlign: 'center',
     lineHeight: 20,
@@ -362,13 +362,13 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   demoTitle: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '700',
     marginBottom: 6
   },
   demoText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 12.5
   },
   cancelBtn: {
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   cancelText: {
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+    fontFamily: 'System',
     fontSize: 13.5,
     fontWeight: '600'
   }
