@@ -1064,6 +1064,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
               <TouchableOpacity
                 style={styles.headerActionCircle}
                 onPress={() => {
+                  console.log("Bell pressed");
                   setShowNotifications(prev => !prev);
                   setShowProfileMenu(false);
                 }}
@@ -1097,6 +1098,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
                           key={item.id || item._id}
                           style={[styles.notificationItem, !item.isRead && { backgroundColor: isDark ? '#0F172A' : '#F0FDF4' }]}
                           onPress={() => {
+                            console.log("View All pressed");
+                            console.log("Navigating to NotificationCenter");
                             handleMarkAsRead(item.id || item._id || '');
                             setShowNotifications(false);
                             navigate('NotificationCenter');
@@ -1116,6 +1119,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
                   <TouchableOpacity
                     style={{ padding: 12, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', alignItems: 'center' }}
                     onPress={() => {
+                      console.log("View All pressed");
+                      console.log("Navigating to NotificationCenter");
                       setShowNotifications(false);
                       navigate('NotificationCenter');
                     }}
