@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { FirestoreNotificationService } from './FirestoreNotificationService';
 
 export class AuthService {
   /**
@@ -76,6 +77,15 @@ export class AuthService {
       console.warn('Profile insert skipped (likely already created by trigger):', profileError.message);
     }
 
+    // Trigger Real-time Firestore Notifications for Admin
+    if (role === 'donor') {
+      await FirestoreNotificationService.notifyDonorRegistered(name, email, authData.user.id).catch(console.error);
+    } else if (role === 'ngo') {
+      await FirestoreNotificationService.notifyNgoRegistered(name, email, authData.user.id).catch(console.error);
+    } else if (role === 'volunteer') {
+      await FirestoreNotificationService.notifyVolunteerRegistered(name, email, authData.user.id).catch(console.error);
+    }
+
     return {
       success: true,
       message: 'Registration successful!',
@@ -120,6 +130,32 @@ export class AuthService {
       throw new Error('User profile not found. Please contact support.');
     }
 
+    // Check account status & suspension
+    const statusVal = (profile.status || '').toLowerCase();
+    const isSuspended =
+      profile.is_active === false ||
+      profile.is_suspended === true ||
+      statusVal === 'suspended' ||
+      statusVal === 'blocked' ||
+      statusVal === 'disabled' ||
+      statusVal === 'inactive';
+
+    if (isSuspended) {
+      await supabase.auth.signOut();
+      if (typeof window !== 'undefined') {
+        if (window.localStorage) {
+          window.localStorage.removeItem('fs_token');
+          window.localStorage.removeItem('fs_user');
+          window.localStorage.removeItem('fs_remember');
+          window.localStorage.removeItem('fs_supabase_auth');
+        }
+        if (window.sessionStorage) {
+          window.sessionStorage.clear();
+        }
+      }
+      throw new Error('Your account has been suspended. Please contact the administrator.');
+    }
+
     const userObj = {
       id: data.user.id,
       name: profile.name,
@@ -127,6 +163,8 @@ export class AuthService {
       role: profile.role as any,
       contactNumber: profile.contact_number ?? '',
       address: profile.address ?? '',
+      status: profile.status ?? 'active',
+      isActive: profile.is_active !== false,
       gpsLocation: profile.latitude && profile.longitude
         ? { latitude: profile.latitude, longitude: profile.longitude }
         : undefined,
@@ -174,6 +212,25 @@ export class AuthService {
 
       if (!profile) return null;
 
+      const statusVal = (profile.status || '').toLowerCase();
+      const isSuspended =
+        profile.is_active === false ||
+        profile.is_suspended === true ||
+        statusVal === 'suspended' ||
+        statusVal === 'blocked' ||
+        statusVal === 'disabled' ||
+        statusVal === 'inactive';
+
+      if (isSuspended) {
+        await supabase.auth.signOut();
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('fs_token');
+          window.localStorage.removeItem('fs_user');
+          window.localStorage.removeItem('fs_remember');
+        }
+        return null;
+      }
+
       return {
         token: session.access_token,
         user: {
@@ -183,6 +240,8 @@ export class AuthService {
           role: profile.role as any,
           contactNumber: profile.contact_number ?? '',
           address: profile.address ?? '',
+          status: profile.status ?? 'active',
+          isActive: profile.is_active !== false,
           gpsLocation: profile.latitude && profile.longitude
             ? { latitude: profile.latitude, longitude: profile.longitude }
             : undefined,

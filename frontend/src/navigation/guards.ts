@@ -2,10 +2,10 @@
  * Whitelist mapping defining which screens are accessible by which user roles.
  */
 export const ROLE_SCREENS: Record<string, string[]> = {
-  donor:     ['Dashboard', 'CreateDonation', 'TrackDonation', 'History', 'DonationList', 'DonationDetail', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
-  ngo:       ['Dashboard', 'BrowseDonations', 'NgoRequests', 'NgoDonationDetail', 'NgoNotifications', 'History', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
-  volunteer: ['Dashboard', 'PickupRoute', 'Leaderboard', 'Profile', 'VolunteerHistory', 'VolunteerNotifications', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
-  admin:     ['Dashboard', 'Profile', 'NotificationCenter', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  donor:     ['Dashboard', 'CreateDonation', 'TrackDonation', 'History', 'DonationList', 'DonationDetail', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  ngo:       ['Dashboard', 'BrowseDonations', 'NgoRequests', 'NgoDonationDetail', 'NgoNotifications', 'History', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  volunteer: ['Dashboard', 'PickupRoute', 'Leaderboard', 'Profile', 'VolunteerHistory', 'VolunteerNotifications', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
+  admin:     ['Dashboard', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'AdminNotifications', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground', 'AIChat'],
 };
 
 interface RouteAccessResult {
@@ -22,12 +22,27 @@ interface RouteAccessResult {
  */
 export const checkRouteAccess = (
   isAuthenticated: boolean,
-  user: { role: string } | null,
+  user: { role: string; isActive?: boolean; status?: string } | null,
   targetScreen: string
 ): RouteAccessResult => {
   const isAuthScreen = ['Login', 'Register', 'ForgotPassword'].includes(targetScreen);
 
-  // 1. Unauthenticated checks
+  // 1. Suspension & Account Status Check
+  if (user) {
+    const statusVal = (user.status || '').toLowerCase();
+    const isSuspended =
+      user.isActive === false ||
+      statusVal === 'suspended' ||
+      statusVal === 'blocked' ||
+      statusVal === 'disabled' ||
+      statusVal === 'inactive';
+
+    if (isSuspended) {
+      return { allowed: false, redirectScreen: 'Login' };
+    }
+  }
+
+  // 2. Unauthenticated checks
   if (!isAuthenticated || !user) {
     if (isAuthScreen) {
       return { allowed: true, redirectScreen: null };

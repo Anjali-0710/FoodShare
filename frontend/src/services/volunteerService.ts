@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { DonationService } from './donationService';
 import { NotificationService } from './notificationService';
+import { FirestoreNotificationService } from './FirestoreNotificationService';
 
 export class VolunteerService {
   /**
@@ -70,6 +71,9 @@ export class VolunteerService {
       relatedDonationId: donationId,
     }).catch((err: any) => console.error(err));
 
+    // Real-time Admin Firestore Notification
+    await FirestoreNotificationService.notifyPickupAssigned(volunteerName, donationId).catch(console.error);
+
     return data;
   }
 
@@ -105,6 +109,15 @@ export class VolunteerService {
           userId: data.donor_id,
           title: 'Food Picked Up! 🚗',
           message: `Volunteer ${data.volunteer_name || 'A volunteer'} has picked up your surplus food.`,
+          type: 'pickup_started',
+          relatedDonationId: donationId,
+        }).catch((err: any) => console.error(err));
+      }
+      if (data.ngo_id) {
+        await NotificationService.createNotification({
+          userId: data.ngo_id,
+          title: 'Food On The Way! 🚗',
+          message: `Volunteer ${data.volunteer_name || 'A volunteer'} has picked up the food and is en route.`,
           type: 'pickup_started',
           relatedDonationId: donationId,
         }).catch((err: any) => console.error(err));

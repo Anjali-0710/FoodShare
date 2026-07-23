@@ -52,7 +52,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ theme, navigate }) => 
       }
     } catch (err: any) {
       const msg = (err.message || '').toLowerCase();
-      if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password') || msg.includes('credentials')) {
+      if (msg.includes('suspend') || msg.includes('block') || msg.includes('disable')) {
+        setError('Your account has been suspended. Please contact the administrator.');
+      } else if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found') || msg.includes('password') || msg.includes('credentials')) {
         setError('Incorrect email or password. Please try again.');
       } else if (msg.includes('network') || msg.includes('fetch') || msg.includes('connect') || msg.includes('failed')) {
         setError('Unable to connect. Please check your internet connection and try again.');

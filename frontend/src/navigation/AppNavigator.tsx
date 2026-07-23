@@ -157,6 +157,8 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         case 'DonationDetail':
           return <DonationDetailScreen theme={theme} navigate={setScreen} />;
         case 'NotificationCenter':
+        case 'Notifications':
+        case 'NotificationCenterScreen':
           return <NotificationCenterScreen theme={theme} navigate={setScreen} />;
         case 'NotificationHistory':
           return <NotificationHistoryScreen theme={theme} navigate={setScreen} />;
@@ -186,6 +188,8 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         case 'History':
           return <HistoryScreen theme={theme} navigate={setScreen} />;
         case 'NotificationCenter':
+        case 'Notifications':
+        case 'NotificationCenterScreen':
           return <NotificationCenterScreen theme={theme} navigate={setScreen} />;
         case 'NotificationHistory':
           return <NotificationHistoryScreen theme={theme} navigate={setScreen} />;
@@ -213,6 +217,8 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         case 'VolunteerNotifications':
           return <VolunteerNotificationsScreen theme={theme} navigate={setScreen} />;
         case 'NotificationCenter':
+        case 'Notifications':
+        case 'NotificationCenterScreen':
           return <NotificationCenterScreen theme={theme} navigate={setScreen} />;
         case 'NotificationHistory':
           return <NotificationHistoryScreen theme={theme} navigate={setScreen} />;
@@ -232,6 +238,9 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
     case 'admin':
       switch (currentScreen) {
         case 'NotificationCenter':
+        case 'Notifications':
+        case 'NotificationCenterScreen':
+        case 'AdminNotifications':
           return <NotificationCenterScreen theme={theme} navigate={setScreen} />;
         case 'NotificationHistory':
           return <NotificationHistoryScreen theme={theme} navigate={setScreen} />;

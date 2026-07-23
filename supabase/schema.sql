@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   volunteer_score INTEGER DEFAULT 0,
   completed_pickups INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

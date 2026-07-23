@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { NotificationService } from './notificationService';
+import { FirestoreNotificationService } from './FirestoreNotificationService';
 
 export interface DonationItem {
   id: string;
@@ -143,6 +144,24 @@ export class DonationService {
       relatedDonationId: donation.id,
     }).catch(err => console.error('Failed to create donor notification:', err));
 
+    // Real-time Admin Notification via Firestore
+    await FirestoreNotificationService.notifyDonationCreated(
+      donationData.foodType,
+      donationData.quantity,
+      donationData.unit,
+      donationData.donorName,
+      donation.id
+    ).catch(err => console.error('Failed to notify admin on donation created:', err));
+
+    // Check if food expiring soon
+    if (donationData.freshnessScore && donationData.freshnessScore <= 40) {
+      await FirestoreNotificationService.notifyFoodExpiringSoon(
+        donationData.foodType,
+        4,
+        donation.id
+      ).catch(err => console.error('Failed to notify food expiring:', err));
+    }
+
     // Create notification for all NGOs
     try {
       const { data: ngos } = await supabase.from('profiles').select('id').eq('role', 'ngo');
@@ -203,6 +222,18 @@ export class DonationService {
         type: 'accepted',
         relatedDonationId: updatedDonation.id,
       }).catch(err => console.error('Failed to notify NGO on acceptance:', err));
+
+      // Real-time Admin Notification
+      await FirestoreNotificationService.notifyDonationAccepted(
+        updatedDonation.foodType,
+        extraData.ngoName || 'NGO',
+        updatedDonation.id
+      ).catch(err => console.error('Failed to notify admin on donation accepted:', err));
+    } else if (status === 'Cancelled') {
+      await FirestoreNotificationService.notifyDonationCancelled(
+        updatedDonation.donorName || 'User',
+        updatedDonation.id
+      ).catch(err => console.error('Failed to notify admin on donation cancelled:', err));
     }
 
     return updatedDonation;

@@ -13,10 +13,12 @@ export class AdminService {
    * Get all users — SELECT policy allows all authenticated users.
    */
   static async getUsers(token: string | null) {
+    console.log('[AdminService.getUsers] Executing Supabase query for profiles...');
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
+    console.log('[AdminService.getUsers] Query completed, error:', error);
 
     if (error) throw new Error(error.message);
     return {
@@ -52,6 +54,7 @@ export class AdminService {
     contactNumber?: string;
     address?: string;
   }, token: string | null) {
+    console.log('[AdminService.updateUser] Updating user id:', id);
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -62,6 +65,7 @@ export class AdminService {
         address: userData.address,
       })
       .eq('id', id);
+    console.log('[AdminService.updateUser] Update finished, error:', error);
 
     if (error) throw new Error(error.message);
     return {
@@ -75,17 +79,41 @@ export class AdminService {
    * Toggle user active/inactive status (admin).
    * Requires the "profiles_update_admin" RLS policy to be applied.
    */
-  static async toggleUserStatus(id: string, isActive: boolean, token: string | null) {
-    const { error } = await supabase
+  static async toggleUserStatus(id: string, statusOrIsActive: 'active' | 'suspended' | boolean, token: string | null) {
+    const status: 'active' | 'suspended' =
+      typeof statusOrIsActive === 'boolean'
+        ? (statusOrIsActive ? 'active' : 'suspended')
+        : statusOrIsActive;
+    const isActive = status === 'active';
+
+    console.log('[AdminService.toggleUserStatus] Toggling status for id:', id, 'status:', status);
+
+    // Try updating status & is_active together
+    let { error } = await supabase
       .from('profiles')
-      .update({ is_active: isActive })
+      .update({
+        status,
+        is_active: isActive,
+      })
       .eq('id', id);
+
+    // Fallback if status column is missing in schema cache
+    if (error && (error.message?.includes('status') || error.code === 'PGRST204')) {
+      console.warn('[AdminService.toggleUserStatus] Status column missing in schema cache, falling back to is_active:', error.message);
+      const fallback = await supabase
+        .from('profiles')
+        .update({ is_active: isActive })
+        .eq('id', id);
+      error = fallback.error;
+    }
+
+    console.log('[AdminService.toggleUserStatus] Toggle finished, error:', error);
 
     if (error) throw new Error(error.message);
     return {
       success: true,
-      message: `User account ${isActive ? 'activated' : 'deactivated'} successfully`,
-      user: { id, isActive },
+      message: `User account ${status === 'active' ? 'activated' : 'suspended'} successfully`,
+      user: { id, status, isActive },
     };
   }
 
@@ -94,7 +122,9 @@ export class AdminService {
    * Requires the "profiles_delete_admin" RLS policy to be applied.
    */
   static async deleteUser(id: string, token: string | null) {
+    console.log('[AdminService.deleteUser] Deleting user id:', id);
     const { error } = await supabase.from('profiles').delete().eq('id', id);
+    console.log('[AdminService.deleteUser] Delete finished, error:', error);
     if (error) throw new Error(error.message);
     return { success: true, message: 'User deleted successfully' };
   }
@@ -103,10 +133,12 @@ export class AdminService {
    * Get all donations (admin).
    */
   static async getDonations(token: string | null) {
+    console.log('[AdminService.getDonations] Executing Supabase query for donations...');
     const { data, error } = await supabase
       .from('donations')
       .select('*')
       .order('created_at', { ascending: false });
+    console.log('[AdminService.getDonations] Query completed, error:', error);
 
     if (error) throw new Error(error.message);
     return {
@@ -119,10 +151,12 @@ export class AdminService {
    * Update donation status (admin).
    */
   static async updateDonationStatus(id: string, status: string, token: string | null) {
+    console.log('[AdminService.updateDonationStatus] Updating donation id:', id, 'status:', status);
     const { error } = await supabase
       .from('donations')
       .update({ status })
       .eq('id', id);
+    console.log('[AdminService.updateDonationStatus] Update finished, error:', error);
 
     if (error) throw new Error(error.message);
     return { success: true, message: 'Donation status updated' };
@@ -132,7 +166,9 @@ export class AdminService {
    * Delete a donation (admin).
    */
   static async deleteDonation(id: string, token: string | null) {
+    console.log('[AdminService.deleteDonation] Deleting donation id:', id);
     const { error } = await supabase.from('donations').delete().eq('id', id);
+    console.log('[AdminService.deleteDonation] Delete finished, error:', error);
     if (error) throw new Error(error.message);
     return { success: true, message: 'Donation deleted' };
   }
@@ -141,11 +177,13 @@ export class AdminService {
    * Get system logs.
    */
   static async getLogs(token: string | null) {
+    console.log('[AdminService.getLogs] Executing Supabase query for system_logs...');
     const { data, error } = await supabase
       .from('system_logs')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100);
+    console.log('[AdminService.getLogs] Query completed, error:', error);
 
     if (error) throw new Error(error.message);
     return {
@@ -165,10 +203,12 @@ export class AdminService {
    * Get analytics data (real data from Supabase).
    */
   static async getAnalytics(token: string | null) {
+    console.log('[AdminService.getAnalytics] Executing Promise.all query for profiles and donations...');
     const [usersResult, donationsResult] = await Promise.all([
       supabase.from('profiles').select('role, created_at, is_active', { count: 'exact' }),
       supabase.from('donations').select('status, food_type, quantity, unit, created_at', { count: 'exact' }),
     ]);
+    console.log('[AdminService.getAnalytics] Query completed, users error:', usersResult.error, 'donations error:', donationsResult.error);
 
     const users = usersResult.data ?? [];
     const donations = donationsResult.data ?? [];
@@ -227,6 +267,7 @@ export class AdminService {
    * Get reports.
    */
   static async getReports(token: string | null) {
+    console.log('[AdminService.getReports] Calling getAnalytics...');
     return AdminService.getAnalytics(token);
   }
 }

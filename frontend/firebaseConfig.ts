@@ -14,30 +14,52 @@ const firebaseConfig = {
   measurementId: "YOUR_MEASUREMENT_ID"
 };
 
+export const isFirebaseConfigured = (): boolean => {
+  return Boolean(
+    firebaseConfig.apiKey &&
+    !firebaseConfig.apiKey.includes('YOUR_') &&
+    firebaseConfig.projectId &&
+    !firebaseConfig.projectId.includes('YOUR_') &&
+    firebaseConfig.storageBucket &&
+    !firebaseConfig.storageBucket.includes('YOUR_')
+  );
+};
+
 // Initialize Firebase services
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 let dbInstance: any = null;
-try {
-  dbInstance = getFirestore(app);
-} catch (err) {
-  console.warn('Firebase Firestore initialization failed, using mock/offline mode:', err);
-}
-
 let storageInstance: any = null;
-try {
-  storageInstance = getStorage(app);
-} catch (err) {
-  console.warn('Firebase Storage initialization failed, using mock/offline mode:', err);
+
+if (isFirebaseConfigured()) {
+  try {
+    dbInstance = getFirestore(app);
+  } catch (err) {
+    console.warn('Firebase Firestore initialization failed, using mock/offline mode:', err);
+  }
+
+  try {
+    storageInstance = getStorage(app);
+  } catch (err) {
+    console.warn('Firebase Storage initialization failed, using mock/offline mode:', err);
+  }
+} else {
+  console.warn('[firebaseConfig] Placeholder API values detected. Skipping Firebase Firestore & Storage initialization.');
 }
 
 export const db = dbInstance;
 export const storage = storageInstance;
 
 export const logoutFirebase = async (): Promise<void> => {
+  console.log('[logoutFirebase] Starting signout...');
   try {
-    await auth.signOut();
+    if (isFirebaseConfigured()) {
+      await auth.signOut();
+      console.log('[logoutFirebase] Signout completed successfully');
+    } else {
+      console.log('[logoutFirebase] Firebase not configured, skipping signout');
+    }
   } catch (err) {
     console.error('Firebase signout error:', err);
   }

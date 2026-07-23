@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -40,16 +40,19 @@ import {
   MapPin,
   Calendar,
   AlertCircle,
-  Camera
+  Camera,
+  User
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import { logout, toggleTheme } from '../../store/authSlice';
 import { AdminService } from '../../services/adminService';
+import { AuthService } from '../../services/authService';
 import { AppTheme } from '../../theme/theme';
-import { db, storage } from '../../../firebaseConfig';
+import { db, storage, isFirebaseConfigured, logoutFirebase } from '../../../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { supabase } from '../../services/supabase';
+import { FirestoreNotificationService, AppNotification } from '../../services/FirestoreNotificationService';
 
 interface AdminDashboardProps {
   theme: AppTheme;
@@ -113,12 +116,14 @@ const MOCK_ADMIN_DATA = {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate }) => {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state: RootState) => state.auth);
+  const { token, user, themeMode } = useSelector((state: RootState) => state.auth);
   const { width } = useWindowDimensions();
 
   // Tabs: analytics | users | donations | reports | logs
   const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'donations' | 'reports' | 'logs'>('analytics');
   const [loading, setLoading] = useState(true);
+  const isInitialLoad = useRef(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [charts, setCharts] = useState<any>(null);
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -179,6 +184,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     type: 'success'
   });
 
+  // Sign Out confirmation state
+  const [showSignOutConfirmModal, setShowSignOutConfirmModal] = useState(false);
+
+  // ==========================================
+  // REAL-TIME FIRESTORE NOTIFICATIONS SYSTEM
+  // ==========================================
+  const [realtimeNotifs, setRealtimeNotifs] = useState<AppNotification[]>([]);
+  const [showAllNotifsModal, setShowAllNotifsModal] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'All' | 'Unread' | 'Read'>('All');
+
+  useEffect(() => {
+    const unsubscribe = FirestoreNotificationService.subscribeAdminNotifications((notifs) => {
+      setRealtimeNotifs(notifs);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const unreadCount = realtimeNotifs.filter(n => !n.isRead).length;
+  const isDark = Boolean(theme?.dark || themeMode === 'dark');
+
+  const handleMarkAsRead = (notificationId: string) => {
+    if (!notificationId) return;
+    setRealtimeNotifs(prev =>
+      prev.map(n =>
+        n.id === notificationId || n._id === notificationId ? { ...n, isRead: true } : n
+      )
+    );
+    FirestoreNotificationService.markAsRead(notificationId).catch(console.error);
+  };
+
+  const handleMarkAllAsRead = () => {
+    setRealtimeNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
+    FirestoreNotificationService.markAllAsRead(realtimeNotifs).catch(console.error);
+  };
+
+  const getFormattedTime = (isoString: string) => {
+    if (!isoString) return 'Recently';
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const showSnackbar = (message: string, type: 'success' | 'error') => {
     setSnackbar({ visible: true, message, type });
     setTimeout(() => {
@@ -189,13 +241,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   const isDesktop = width >= 1024;
 
   const loadAdminProfile = async () => {
+    console.log('[loadAdminProfile] Starting loadAdminProfile...');
     try {
-      if (!db) {
-        console.warn('Firestore is not initialized.');
+      if (!isFirebaseConfigured() || !db) {
+        console.warn('[loadAdminProfile] Firebase is not configured. Skipping Firestore profile fetch.');
         return;
       }
+      console.log('[loadAdminProfile] Calling getDoc...');
       const docRef = doc(db, 'profiles', user?.id || 'admin');
       const docSnap = await getDoc(docRef);
+      console.log('[loadAdminProfile] getDoc finished, exists:', docSnap.exists());
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data?.name) setProfileName(data.name);
@@ -206,7 +261,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         if (data?.profilePicUrl) setProfilePicUrl(data.profilePicUrl);
       }
     } catch (err) {
-      console.warn('Failed to load profile from Firestore:', err);
+      console.warn('[loadAdminProfile] Failed to load profile from Firestore:', err);
+    } finally {
+      console.log('[loadAdminProfile] Finished loadAdminProfile');
     }
   };
 
@@ -230,30 +287,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       return;
     }
 
-    if (!db || !storage) {
+    if (!isFirebaseConfigured() || !db || !storage) {
       showSnackbar('Profile updated successfully (Offline Mode).', 'success');
       setIsEditingProfile(false);
       return;
     }
 
-    setLoading(true);
+    setActionLoading(true);
     try {
       let finalPicUrl = profilePicUrl;
       // We simulate profile pic changes by uploading a pixel base64 to Storage if it starts with 'http' and isn't storage url
       if (profilePicUrl && !profilePicUrl.includes('firebasestorage')) {
         try {
+          console.log('[handleSaveAdminProfile] Starting image upload...');
           const mockPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
           const response = await fetch(`data:image/png;base64,${mockPngBase64}`);
           const blob = await response.blob();
           const storageRef = ref(storage, `profiles/${user?.id || 'admin'}/profile.png`);
+          console.log('[handleSaveAdminProfile] Calling uploadBytes...');
           await uploadBytes(storageRef, blob);
+          console.log('[handleSaveAdminProfile] uploadBytes finished, calling getDownloadURL...');
           finalPicUrl = await getDownloadURL(storageRef);
+          console.log('[handleSaveAdminProfile] getDownloadURL finished:', finalPicUrl);
           setProfilePicUrl(finalPicUrl);
         } catch (storageErr) {
-          console.warn('Firebase Storage upload warning:', storageErr);
+          console.warn('[handleSaveAdminProfile] Firebase Storage upload warning:', storageErr);
         }
       }
 
+      console.log('[handleSaveAdminProfile] Calling setDoc...');
       await setDoc(doc(db, 'profiles', user?.id || 'admin'), {
         name: profileName,
         phone: profilePhone,
@@ -265,14 +327,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         role: user?.role || 'admin',
         updatedAt: new Date().toISOString()
       }, { merge: true });
+      console.log('[handleSaveAdminProfile] setDoc finished');
 
       showSnackbar('Profile updated successfully.', 'success');
       setIsEditingProfile(false);
     } catch (err: any) {
-      console.error('Firebase save failed:', err);
+      console.error('[handleSaveAdminProfile] Firebase save failed:', err);
       showSnackbar(`Failed to save: ${err.message || 'Unknown error'}`, 'error');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -290,60 +353,130 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       return;
     }
 
-    setLoading(true);
+    setActionLoading(true);
     try {
+      console.log('[handleUpdatePassword] Calling supabase.auth.updateUser...');
       const { error } = await supabase.auth.updateUser({ password: newPassword });
+      console.log('[handleUpdatePassword] updateUser finished, error:', error);
       if (error) throw error;
       showSnackbar('Password updated successfully.', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      console.error('Password update failed:', err);
+      console.error('[handleUpdatePassword] Password update failed:', err);
       showSnackbar(`Failed to update password: ${err.message || 'Unknown error'}`, 'error');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const fetchAdminData = async () => {
-    setLoading(true);
+    if (isInitialLoad.current) {
+      setLoading(true);
+    }
     try {
-      const analyticsRes = await AdminService.getAnalytics(token);
-      if (analyticsRes.success && analyticsRes.analytics) {
-        setStats(analyticsRes.analytics);
+      function withTimeout<T>(promise: Promise<T>, timeoutMs = 10000): Promise<T> {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+          )
+        ]);
+      }
+
+      const [analyticsResult, usersResult, donationsResult, logsResult, reportsResult] = await Promise.allSettled([
+        withTimeout(AdminService.getAnalytics(token), 10000),
+        withTimeout(AdminService.getUsers(token), 10000),
+        withTimeout(AdminService.getDonations(token), 10000),
+        withTimeout(AdminService.getLogs(token), 10000),
+        withTimeout(AdminService.getReports(token), 10000)
+      ]);
+
+      // Process Analytics
+      if (analyticsResult.status === 'fulfilled' && analyticsResult.value?.success && analyticsResult.value?.analytics) {
+        setStats(analyticsResult.value.analytics);
+        const analyticsData = analyticsResult.value.analytics as any;
         setCharts({
-          categories: Object.keys(analyticsRes.analytics.foodTypeBreakdown || {}).map(k => ({
+          categories: Object.keys(analyticsData.foodTypeBreakdown || {}).map((k: string) => ({
             category: k,
-            count: analyticsRes.analytics.foodTypeBreakdown[k]
+            count: analyticsData.foodTypeBreakdown[k]
           })),
-          ngoPerformance: [],
-          monthlyTrends: []
+          ngoPerformance: analyticsData.ngoPerformance || MOCK_ADMIN_DATA.charts.ngoPerformance,
+          monthlyTrends: analyticsData.monthlyTrends || MOCK_ADMIN_DATA.charts.monthlyTrends
         });
+      } else {
+        console.warn('[fetchAdminData] Analytics failed or timed out. Falling back to mock stats.');
+        setStats(MOCK_ADMIN_DATA.stats);
+        setCharts(MOCK_ADMIN_DATA.charts);
       }
 
-      const usersRes = await AdminService.getUsers(token);
-      if (usersRes.success) {
-        setUsersList(usersRes.users || []);
+      // Process Users
+      let fetchedUsers: any[] = MOCK_ADMIN_DATA.users;
+      if (usersResult.status === 'fulfilled' && usersResult.value?.success && Array.isArray(usersResult.value.users)) {
+        fetchedUsers = usersResult.value.users.map((u: any) => ({ _id: u.id || u._id, ...u }));
+      } else {
+        console.warn('[fetchAdminData] Users fetch failed or timed out. Falling back to mock users.');
       }
+      setUsersList(fetchedUsers);
 
-      const donationsRes = await AdminService.getDonations(token);
-      if (donationsRes.success) {
-        setDonationsList(donationsRes.donations || []);
+      // Process Donations
+      let fetchedDonations: any[] = MOCK_ADMIN_DATA.donations;
+      if (donationsResult.status === 'fulfilled' && donationsResult.value?.success && Array.isArray(donationsResult.value.donations)) {
+        fetchedDonations = donationsResult.value.donations.map((d: any) => ({ _id: d.id || d._id, ...d }));
+      } else {
+        console.warn('[fetchAdminData] Donations fetch failed or timed out. Falling back to mock donations.');
       }
+      setDonationsList(fetchedDonations);
 
-      const logsRes = await AdminService.getLogs(token);
-      if (logsRes.success) {
-        setLogsList(logsRes.logs || []);
+      // Process Logs
+      let fetchedLogs: any[] = MOCK_ADMIN_DATA.logs;
+      if (logsResult.status === 'fulfilled' && logsResult.value?.success && Array.isArray(logsResult.value.logs)) {
+        fetchedLogs = logsResult.value.logs.map((l: any) => ({ _id: l.id || l._id, ...l }));
+      } else {
+        console.warn('[fetchAdminData] Logs fetch failed or timed out. Falling back to mock logs.');
       }
+      setLogsList(fetchedLogs);
 
-      const reportsRes = await AdminService.getReports(token);
-      if (reportsRes.success) {
+      // Process Reports
+      if (reportsResult.status === 'fulfilled' && reportsResult.value?.success && (reportsResult.value as any)?.reports) {
+        setReportsData((reportsResult.value as any).reports);
+      } else {
         setReportsData({
-          donations: donationsRes.success ? (donationsRes.donations ?? []) : [],
-          users: usersRes.success ? (usersRes.users ?? []) : [],
-          ngos: usersRes.success ? (usersRes.users ?? []).filter(u => u?.role === 'ngo') : [],
-          volunteers: usersRes.success ? (usersRes.users ?? []).filter(u => u?.role === 'volunteer') : []
+          donations: (fetchedDonations ?? []).map(d => ({
+            date: d?.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
+            time: d?.createdAt ? new Date(d.createdAt).toLocaleTimeString() : '',
+            foodType: d?.foodType ?? '',
+            quantity: `${d?.quantity ?? 0} ${d?.unit ?? ''}`,
+            donorName: d?.donorName ?? '',
+            ngoName: d?.ngoName || 'N/A',
+            volunteerName: d?.volunteerName || 'N/A',
+            status: d?.status ?? ''
+          })),
+          users: (fetchedUsers ?? []).map(u => ({
+            date: u?.createdAt ? new Date(u.createdAt).toLocaleDateString() : '',
+            name: u?.name ?? '',
+            email: u?.email ?? '',
+            role: (u?.role ?? '').toUpperCase(),
+            contact: u?.contactNumber ?? '',
+            status: u?.isActive !== false ? 'Active' : 'Inactive'
+          })),
+          ngos: (fetchedUsers ?? []).filter(u => u?.role === 'ngo').map(u => ({
+            ngoName: u?.name ?? '',
+            email: u?.email ?? '',
+            contact: u?.contactNumber ?? '',
+            completedDeliveries: (fetchedDonations ?? []).filter(d => d?.ngoName === u?.name && d?.status === 'Completed').length,
+            capacity: 100,
+            status: u?.isActive !== false ? 'Active' : 'Inactive'
+          })),
+          volunteers: (fetchedUsers ?? []).filter(u => u?.role === 'volunteer').map(u => ({
+            volunteerName: u?.name ?? '',
+            email: u?.email ?? '',
+            contact: u?.contactNumber ?? '',
+            score: u?.volunteerScore || 0,
+            completedDeliveries: (fetchedDonations ?? []).filter(d => d?.volunteerName === u?.name && d?.status === 'Completed').length,
+            status: u?.isActive !== false ? 'Active' : 'Inactive'
+          }))
         });
       }
     } catch (err) {
@@ -390,15 +523,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         }))
       });
     } finally {
-      setLoading(false);
+      if (isInitialLoad.current) {
+        setLoading(false);
+        isInitialLoad.current = false;
+      }
     }
   };
 
   const fetchUsers = async () => {
     try {
+      console.log('[fetchUsers] Calling getUsers...');
       const usersRes = await AdminService.getUsers(token);
+      console.log('[fetchUsers] getUsers finished:', usersRes?.success);
       if (usersRes.success) {
-        setUsersList(usersRes.users || []);
+        setUsersList((usersRes.users || []).map((u: any) => ({ _id: u.id || u._id, ...u })));
       }
     } catch (err) {
       console.warn('Failed to refresh users list from Supabase:', err);
@@ -486,9 +624,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     setReportPreviewList(baseList);
   }, [reportsData, selectedReportType, selectedReportMonth, donationsList, usersList, stats]);
 
+  const handleConfirmSignOut = async () => {
+    setShowSignOutConfirmModal(false);
+    setShowProfileModal(false);
+    try {
+      console.log('[handleConfirmSignOut] Performing full user signout...');
+      dispatch(logout());
+      await AuthService.logout();
+      await supabase.auth.signOut();
+      if (isFirebaseConfigured()) {
+        await logoutFirebase();
+      }
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('fs_supabase_auth');
+        window.localStorage.clear();
+      }
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    } finally {
+      navigate('Login');
+    }
+  };
+
   const handleLogout = () => {
-    dispatch(logout());
-    navigate('Login');
+    handleConfirmSignOut();
   };
 
   const handleEditUserClick = (item: any) => {
@@ -521,7 +680,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
 
     try {
       const id = editingUser?._id || editingUser?.id;
+      console.log('[handleSaveUser] Calling updateUser for id:', id);
       const res = await AdminService.updateUser(id, userForm, token);
+      console.log('[handleSaveUser] updateUser completed:', res?.success);
       if (res.success) {
         setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, ...userForm } : u));
         setEditingUser(null);
@@ -529,6 +690,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
         await fetchUsers();
       }
     } catch (err: any) {
+      console.warn('[handleSaveUser] updateUser failed:', err);
       alert(err.message || 'Failed to update user details.');
       const id = editingUser?._id || editingUser?.id;
       setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, ...userForm } : u));
@@ -538,17 +700,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
 
   const handleToggleUserActivation = async (item: any) => {
     const id = item?._id || item?.id;
-    const targetStatus = item?.isActive === false ? true : false;
+    const isCurrentlyActive = item?.status ? item.status === 'active' : item?.isActive !== false;
+    const nextStatus: 'active' | 'suspended' = isCurrentlyActive ? 'suspended' : 'active';
+    const nextIsActive = nextStatus === 'active';
+
     try {
-      const res = await AdminService.toggleUserStatus(id, targetStatus, token);
+      console.log('[handleToggleUserActivation] Calling toggleUserStatus for id:', id, 'nextStatus:', nextStatus);
+      const res = await AdminService.toggleUserStatus(id, nextStatus, token);
+      console.log('[handleToggleUserActivation] toggleUserStatus completed:', res?.success);
       if (res.success) {
-        setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, isActive: targetStatus } : u));
-        alert(`User account ${targetStatus ? 'activated' : 'deactivated'} successfully!`);
+        setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, status: nextStatus, isActive: nextIsActive } : u));
+        alert(`User account ${nextStatus === 'active' ? 'activated' : 'suspended'} successfully!`);
         await fetchUsers();
       }
     } catch (err: any) {
+      console.warn('[handleToggleUserActivation] toggleUserStatus failed:', err);
       alert(err.message || 'Failed to toggle user status.');
-      setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, isActive: targetStatus } : u));
+      setUsersList(prev => (prev ?? []).map(u => (u?._id === id || u?.id === id) ? { ...u, status: nextStatus, isActive: nextIsActive } : u));
     }
   };
 
@@ -556,11 +724,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     const id = item?._id || item?.id;
     if (!confirm(`Are you sure you want to permanently delete user "${item?.name}"?`)) return;
     try {
+      console.log('[handleDeleteUser] Calling deleteUser for id:', id);
       const res = await AdminService.deleteUser(id, token);
+      console.log('[handleDeleteUser] deleteUser completed:', res?.success);
       if (res.success) {
         fetchAdminData();
       }
     } catch (err: any) {
+      console.warn('[handleDeleteUser] deleteUser failed:', err);
       setUsersList(prev => (prev ?? []).filter(u => u?._id !== id && u?.id !== id));
     }
   };
@@ -573,12 +744,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   const handleSaveDonationStatus = async () => {
     const id = editingDonation?._id || editingDonation?.id;
     try {
+      console.log('[handleSaveDonationStatus] Calling updateDonationStatus for id:', id);
       const res = await AdminService.updateDonationStatus(id, donationStatusVal, token);
+      console.log('[handleSaveDonationStatus] updateDonationStatus completed:', res?.success);
       if (res.success) {
         setEditingDonation(null);
         fetchAdminData();
       }
     } catch (err: any) {
+      console.warn('[handleSaveDonationStatus] updateDonationStatus failed:', err);
       setDonationsList(prev => (prev ?? []).map(d => (d?._id === id || d?.id === id) ? { ...d, status: donationStatusVal } : d));
       setEditingDonation(null);
     }
@@ -588,11 +762,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     const id = item?._id || item?.id;
     if (!confirm(`Are you sure you want to permanently delete this donation listing?`)) return;
     try {
+      console.log('[handleDeleteDonation] Calling deleteDonation for id:', id);
       const res = await AdminService.deleteDonation(id, token);
+      console.log('[handleDeleteDonation] deleteDonation completed:', res?.success);
       if (res.success) {
         fetchAdminData();
       }
     } catch (err: any) {
+      console.warn('[handleDeleteDonation] deleteDonation failed:', err);
       setDonationsList(prev => (prev ?? []).filter(d => d?._id !== id && d?.id !== id));
     }
   };
@@ -621,6 +798,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    FirestoreNotificationService.notifyReportExported(selectedReportType, 'csv').catch(console.error);
   };
 
   const handleExportExcel = () => {
@@ -629,33 +807,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       return;
     }
     const headers = reportPreviewList?.[0] ? Object.keys(reportPreviewList[0]) : [];
-    let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
-    xml += `<Worksheet ss:Name="${selectedReportType.toUpperCase()}"><Table>`;
+    const reLt = new RegExp('\x3C', 'g');
+    const reGt = new RegExp('\x3E', 'g');
 
-    xml += '<Row>';
+    let xml = '\x3C?xml version="1.0"?\x3E\x3C?mso-application progid="Excel.Sheet"?\x3E\x3CWorkbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40"\x3E';
+    xml += '\x3CWorksheet ss:Name="' + selectedReportType.toUpperCase() + '"\x3E\x3CTable\x3E';
+
+    xml += '\x3CRow\x3E';
     headers.forEach(h => {
-      xml += `<Cell><Data ss:Type="String">${h.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>`;
+      xml += '\x3CCell\x3E\x3CData ss:Type="String"\x3E' + h.toUpperCase().replace(reLt, '&lt;').replace(reGt, '&gt;') + '\x3C/Data\x3E\x3C/Cell\x3E';
     });
-    xml += '</Row>';
+    xml += '\x3C/Row\x3E';
 
     (reportPreviewList ?? []).forEach(row => {
-      xml += '<Row>';
+      xml += '\x3CRow\x3E';
       headers.forEach(h => {
         const val = row?.[h] === null || row?.[h] === undefined ? '' : String(row[h]);
-        xml += `<Cell><Data ss:Type="String">${val.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>`;
+        xml += '\x3CCell\x3E\x3CData ss:Type="String"\x3E' + val.replace(reLt, '&lt;').replace(reGt, '&gt;') + '\x3C/Data\x3E\x3C/Cell\x3E';
       });
-      xml += '</Row>';
+      xml += '\x3C/Row\x3E';
     });
 
-    xml += '</Table></Worksheet></Workbook>';
+    xml += '\x3C/Table\x3E\x3C/Worksheet\x3E\x3C/Workbook\x3E';
     const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `foodreach_report_${selectedReportType}_${selectedReportMonth}.xls`);
+    link.setAttribute('download', 'foodreach_report_' + selectedReportType + '_' + selectedReportMonth + '.xls');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    FirestoreNotificationService.notifyReportExported(selectedReportType, 'excel').catch(console.error);
   };
 
   const handlePrintPDF = () => {
@@ -670,47 +852,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       return;
     }
 
-    const title = `${selectedReportType.toUpperCase()} REPORT - Month: ${selectedReportMonth}`;
-    let html = `
-      <html>
-        <head>
-          <title>${title}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1E293B; background-color: #FFFFFF; }
-            h1 { color: #22C55E; font-size: 24px; margin-bottom: 5px; }
-            .subtitle { color: #64748B; font-size: 13px; margin-bottom: 25px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #E2E8F0; padding: 12px 14px; text-align: left; font-size: 12px; }
-            th { background-color: #F8FAFC; font-weight: bold; color: #475569; text-transform: uppercase; }
-            tr:nth-child(even) { background-color: #F8FAFC; }
-          </style>
-        </head>
-        <body>
-          <h1>FoodReach Admin Console</h1>
-          <div class="subtitle">${title} (Generated on ${new Date().toLocaleString()} by Administrator)</div>
-          <table>
-            <thead>
-              <tr>
-                ${headers.map(h => `<th>${h}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${(reportPreviewList ?? []).map(row => `
-                <tr>
-                  ${headers.map(h => `<td>${row?.[h] === null || row?.[h] === undefined ? 'N/A' : row[h]}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }
-          </script>
-        </body>
-      </html>
-    `;
+    const title = selectedReportType.toUpperCase() + ' REPORT - Month: ' + selectedReportMonth;
+    let html = '\x3Chtml\x3E\x3Chead\x3E\x3Ctitle\x3E' + title + '\x3C/title\x3E';
+    html += '\x3Cstyle\x3Ebody { font-family: "Segoe UI", sans-serif; padding: 30px; color: #1E293B; } h1 { color: #22C55E; font-size: 24px; } .subtitle { color: #64748B; font-size: 13px; margin-bottom: 25px; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #E2E8F0; padding: 12px; font-size: 12px; } th { background-color: #F8FAFC; }\x3C/style\x3E\x3C/head\x3E';
+    html += '\x3Cbody\x3E\x3Ch1\x3EFoodReach Admin Console\x3C/h1\x3E\x3Cdiv class="subtitle"\x3E' + title + ' (Generated on ' + new Date().toLocaleString() + ')\x3C/div\x3E\x3Ctable\x3E\x3Cthead\x3E\x3Ctr\x3E';
+    headers.forEach(h => { html += '\x3Cth\x3E' + h + '\x3C/th\x3E'; });
+    html += '\x3C/tr\x3E\x3C/thead\x3E\x3Ctbody\x3E';
+    (reportPreviewList ?? []).forEach(row => {
+      html += '\x3Ctr\x3E';
+      headers.forEach(h => {
+        const val = row?.[h] === null || row?.[h] === undefined ? 'N/A' : row[h];
+        html += '\x3Ctd\x3E' + val + '\x3C/td\x3E';
+      });
+      html += '\x3C/tr\x3E';
+    });
+    html += '\x3C/tbody\x3E\x3C/table\x3E\x3Cscript\x3Ewindow.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };\x3C/script\x3E\x3C/body\x3E\x3C/html\x3E';
+
     printWindow.document.write(html);
     printWindow.document.close();
   };
@@ -752,7 +909,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
   ];
 
   return (
-    <View style={styles.appContainer}>
+    <View style={[styles.appContainer, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
       {/* Absolute overlay backdrop to close active dropdowns on click outside */}
       {(showNotifications || showProfileMenu) && (
         <TouchableOpacity
@@ -766,12 +923,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
       )}
       {/* 1. COLLAPSIBLE SIDEBAR (For Desktop Viewports) */}
       {isDesktop && (
-        <View style={[styles.sidebar, sidebarCollapsed && styles.sidebarCollapsed]}>
+        <View style={[styles.sidebar, { backgroundColor: isDark ? '#1E293B' : 'rgba(255, 255, 255, 0.92)', borderRightColor: isDark ? '#334155' : '#E2E8F0' }, sidebarCollapsed && styles.sidebarCollapsed]}>
           <View style={styles.sidebarBrand}>
             <View style={styles.brandIconCircle}>
               <Heart size={16} color="#FFFFFF" />
             </View>
-            {!sidebarCollapsed && <Text style={styles.brandText}>FoodReach</Text>}
+            {!sidebarCollapsed && <Text style={[styles.brandText, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>FoodReach</Text>}
           </View>
 
           <ScrollView style={styles.sidebarMenuScroll}>
@@ -781,12 +938,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
               return (
                 <TouchableOpacity
                   key={item.key}
-                  style={[styles.sidebarMenuItem, isActive && styles.sidebarMenuItemActive]}
+                  style={[styles.sidebarMenuItem, isActive && styles.sidebarMenuItemActive, isDark && !isActive && { backgroundColor: 'transparent' }]}
                   onPress={() => setActiveTab(item.key as any)}
                 >
-                  <Icon size={20} color={isActive ? '#22C55E' : '#64748B'} />
+                  <Icon size={20} color={isActive ? '#22C55E' : isDark ? '#94A3B8' : '#64748B'} />
                   {!sidebarCollapsed && (
-                    <Text style={[styles.sidebarMenuItemText, isActive && styles.sidebarMenuItemTextActive]}>
+                    <Text style={[styles.sidebarMenuItemText, { color: isDark ? '#CBD5E1' : '#64748B' }, isActive && styles.sidebarMenuItemTextActive]}>
                       {item.label}
                     </Text>
                   )}
@@ -799,26 +956,103 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
             style={styles.sidebarCollapseBtn}
             onPress={() => setSidebarCollapsed(!sidebarCollapsed)}
           >
-            {sidebarCollapsed ? <ChevronRight size={18} color="#64748B" /> : <ChevronLeft size={18} color="#64748B" />}
-            {!sidebarCollapsed && <Text style={styles.collapseText}>Collapse Sidebar</Text>}
+            {sidebarCollapsed ? <ChevronRight size={18} color={isDark ? '#94A3B8' : '#64748B'} /> : <ChevronLeft size={18} color={isDark ? '#94A3B8' : '#64748B'} />}
+            {!sidebarCollapsed && <Text style={[styles.collapseText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Collapse Sidebar</Text>}
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Mobile Drawer Overlay (for viewports below 1024px) */}
+      {!isDesktop && !sidebarCollapsed && (
+        <View style={styles.mobileDrawerOverlay}>
+          <TouchableOpacity
+            style={styles.mobileDrawerBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarCollapsed(true)}
+          />
+          <View style={[styles.mobileDrawerContent, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+            <View style={styles.sidebarBrand}>
+              <View style={styles.brandIconCircle}>
+                <Heart size={16} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.brandText, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>FoodReach</Text>
+              <TouchableOpacity
+                style={{ marginLeft: 'auto', padding: 4 }}
+                onPress={() => setSidebarCollapsed(true)}
+              >
+                <X size={20} color={isDark ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.sidebarMenuScroll}>
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[styles.sidebarMenuItem, isActive && styles.sidebarMenuItemActive]}
+                    onPress={() => {
+                      setActiveTab(item.key as any);
+                      setSidebarCollapsed(true);
+                    }}
+                  >
+                    <Icon size={20} color={isActive ? '#22C55E' : isDark ? '#94A3B8' : '#64748B'} />
+                    <Text style={[styles.sidebarMenuItemText, { color: isDark ? '#CBD5E1' : '#64748B' }, isActive && styles.sidebarMenuItemTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <View style={{ height: 1, backgroundColor: isDark ? '#334155' : '#E2E8F0', marginVertical: 12, marginHorizontal: 16 }} />
+
+              <TouchableOpacity
+                style={styles.sidebarMenuItem}
+                onPress={() => {
+                  setSidebarCollapsed(true);
+                  setShowProfileModal(true);
+                }}
+              >
+                <User size={20} color="#22C55E" />
+                <Text style={[styles.sidebarMenuItemText, { color: '#22C55E', fontWeight: '700' }]}>
+                  Admin Profile
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sidebarMenuItem}
+                onPress={() => {
+                  setSidebarCollapsed(true);
+                  setShowSignOutConfirmModal(true);
+                }}
+              >
+                <LogOut size={20} color="#EF4444" />
+                <Text style={[styles.sidebarMenuItemText, { color: '#EF4444', fontWeight: '700' }]}>
+                  Sign Out
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
         </View>
       )}
 
       {/* 2. MAIN CONTENT CONTAINER */}
       <View style={styles.mainContent}>
         {/* Glassmorphism Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: isDark ? '#1E293B' : 'rgba(255, 255, 255, 0.85)', borderBottomColor: isDark ? '#334155' : '#E2E8F0', paddingHorizontal: width < 600 ? 10 : 24 }]}>
           <View style={styles.headerLeft}>
             {!isDesktop && (
               <TouchableOpacity style={styles.mobileMenuBtn} onPress={() => setSidebarCollapsed(!sidebarCollapsed)}>
-                <Menu size={22} color="#1E293B" />
+                <Menu size={22} color={isDark ? '#F8FAFC' : '#1E293B'} />
               </TouchableOpacity>
             )}
-            <Text style={styles.headerDashboardTitle}>Admin Console</Text>
+            <Text style={[styles.headerDashboardTitle, { color: isDark ? '#F8FAFC' : '#1E293B', fontSize: width < 400 ? 14 : 16 }]} numberOfLines={1}>
+              Admin Console
+            </Text>
           </View>
 
-          <View style={styles.headerRight}>
+          <View style={[styles.headerRight, { gap: width < 480 ? 6 : 12 }]}>
             <TouchableOpacity
               style={styles.headerActionCircle}
               onPress={() => dispatch(toggleTheme())}
@@ -836,34 +1070,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
                 }}
               >
                 <Bell size={18} color="#64748B" />
-                <View style={styles.notificationDotBadge} />
+                {unreadCount > 0 && (
+                  <View style={styles.notificationDotBadge}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               {showNotifications && (
-                <View style={styles.dropdownPanel}>
-                  <View style={styles.dropdownHeader}>
-                    <Text style={styles.dropdownHeaderTitle}>Recent Alerts</Text>
+                <View style={[styles.dropdownPanel, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', right: width < 480 ? -40 : 0, width: width < 400 ? 280 : 340 }]}>
+                  <View style={[styles.dropdownHeader, { borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <Text style={[styles.dropdownHeaderTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>Real-time Alerts ({realtimeNotifs.length})</Text>
+                    {unreadCount > 0 && (
+                      <TouchableOpacity onPress={handleMarkAllAsRead}>
+                        <Text style={{ fontSize: 12, color: '#22C55E', fontWeight: '700' }}>Mark all read</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <ScrollView style={{ maxHeight: 200 }}>
-                    <View style={styles.notificationItem}>
-                      <Text style={styles.notificationText}>New donor Rajesh Kumar registered.</Text>
-                      <Text style={styles.notificationTime}>5m ago</Text>
-                    </View>
-                    <View style={styles.notificationItem}>
-                      <Text style={styles.notificationText}>Donation completed by Care NGO.</Text>
-                      <Text style={styles.notificationTime}>15m ago</Text>
-                    </View>
+                  <ScrollView style={{ maxHeight: 280 }}>
+                    {realtimeNotifs.length === 0 ? (
+                      <View style={styles.notificationItem}>
+                        <Text style={[styles.notificationText, { color: isDark ? '#94A3B8' : '#64748B' }]}>No alerts right now.</Text>
+                      </View>
+                    ) : (
+                      realtimeNotifs.slice(0, 8).map((item) => (
+                        <TouchableOpacity
+                          key={item.id || item._id}
+                          style={[styles.notificationItem, !item.isRead && { backgroundColor: isDark ? '#0F172A' : '#F0FDF4' }]}
+                          onPress={() => handleMarkAsRead(item.id || item._id || '')}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.notificationText, { color: isDark ? '#F8FAFC' : '#0F172A' }, !item.isRead && { fontWeight: '800' }]}>
+                              {item.title}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>{item.message}</Text>
+                          </View>
+                          <Text style={[styles.notificationTime, { color: isDark ? '#64748B' : '#94A3B8' }]}>{getFormattedTime(item.createdAt)}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
                   </ScrollView>
+                  <TouchableOpacity
+                    style={{ padding: 12, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', alignItems: 'center' }}
+                    onPress={() => {
+                      console.log("View All Notifications pressed");
+                      console.log("Navigation object:", navigate);
+                      console.log("Registered target route:", "NotificationCenter");
+                      setShowNotifications(false);
+                      navigate('NotificationCenter');
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: '#22C55E', fontWeight: '700' }}>View All Notifications</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
 
-            <TouchableOpacity style={styles.headerQuickExportBtn} onPress={() => setActiveTab('reports')}>
-              <FileText size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.headerQuickExportText}>Export Report</Text>
+            <TouchableOpacity
+              style={[styles.headerQuickExportBtn, { paddingHorizontal: width < 480 ? 8 : 12 }]}
+              onPress={() => setActiveTab('reports')}
+            >
+              <FileText size={14} color="#FFFFFF" style={{ marginRight: width < 480 ? 0 : 6 }} />
+              {width >= 480 && <Text style={styles.headerQuickExportText}>Export Report</Text>}
             </TouchableOpacity>
 
-            {/* User Profile Dropdown / Avatar Section */}
+            {/* User Profile Avatar Section (Always Visible) */}
             <View style={{ position: 'relative', zIndex: 10001 }}>
               <TouchableOpacity
                 style={styles.headerUserAvatarWrapper}
@@ -1768,10 +2039,142 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
             </ScrollView>
 
             <TouchableOpacity
-              style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9' }]}
+              style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444', marginTop: 12 }]}
+              onPress={() => setShowSignOutConfirmModal(true)}
+            >
+              <Text style={[styles.modalSubmitBtnText, { color: '#FFFFFF' }]}>Sign Out</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9', marginTop: 8 }]}
               onPress={() => { setShowProfileModal(false); setIsEditingProfile(false); }}
             >
               <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Close Profile Panel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* OVERLAY MODAL: CONFIRM SIGN OUT */}
+      {showSignOutConfirmModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 400, backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+              <Text style={[styles.modalTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>Confirm Sign Out</Text>
+              <TouchableOpacity onPress={() => setShowSignOutConfirmModal(false)}>
+                <X size={20} color={isDark ? '#F8FAFC' : '#1E293B'} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={{ fontSize: 13.5, color: isDark ? '#CBD5E1' : '#475569', marginVertical: 16 }}>
+              Are you sure you want to sign out?
+            </Text>
+
+            <View style={styles.modalActionsRowGroup}>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9', flex: 1, marginTop: 0 }]}
+                onPress={() => setShowSignOutConfirmModal(false)}
+              >
+                <Text style={[styles.modalSubmitBtnText, { color: isDark ? '#CBD5E1' : '#64748B' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444', flex: 1, marginTop: 0 }]}
+                onPress={handleConfirmSignOut}
+              >
+                <Text style={[styles.modalSubmitBtnText, { color: '#FFFFFF' }]}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* OVERLAY MODAL: VIEW ALL NOTIFICATIONS */}
+      {showAllNotifsModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 650, maxHeight: '85%', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Bell size={20} color="#22C55E" style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>All Notifications ({realtimeNotifs.length})</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAllNotifsModal(false)}>
+                <X size={20} color={isDark ? '#F8FAFC' : '#1E293B'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={{ flexDirection: 'row', gap: 10, marginVertical: 12 }}>
+              {(['All', 'Unread', 'Read'] as const).map(tab => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[
+                    styles.statusSelectBtnItem,
+                    notifFilter === tab && styles.statusSelectBtnItemActive
+                  ]}
+                  onPress={() => setNotifFilter(tab)}
+                >
+                  <Text style={[styles.statusSelectBtnText, notifFilter === tab && styles.statusSelectBtnTextActive]}>
+                    {tab} ({tab === 'All' ? realtimeNotifs.length : tab === 'Unread' ? unreadCount : realtimeNotifs.length - unreadCount})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+              {unreadCount > 0 && (
+                <TouchableOpacity
+                  style={[styles.statusSelectBtnItem, { marginLeft: 'auto', backgroundColor: '#F0FDF4', borderColor: '#22C55E' }]}
+                  onPress={handleMarkAllAsRead}
+                >
+                  <Text style={{ fontSize: 11.5, color: '#22C55E', fontWeight: '700' }}>Mark All Read</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Notification List (Newest First) */}
+            <ScrollView style={{ flex: 1, marginVertical: 8 }}>
+              {realtimeNotifs.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: '#64748B', fontSize: 14 }}>No notifications available.</Text>
+                </View>
+              ) : (
+                realtimeNotifs
+                  .filter(n => notifFilter === 'All' || (notifFilter === 'Unread' ? !n.isRead : n.isRead))
+                  .map(item => (
+                    <TouchableOpacity
+                      key={item.id || item._id}
+                      style={[
+                        styles.notificationItem,
+                        { paddingVertical: 12, paddingHorizontal: 14, marginBottom: 8, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' },
+                        !item.isRead && { backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderColor: isDark ? '#15803D' : '#BBF7D0' }
+                      ]}
+                      onPress={() => handleMarkAsRead(item.id || item._id || '')}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={[styles.notificationText, !item.isRead && { fontWeight: '800', color: '#0F172A' }]}>
+                            {item.title}
+                          </Text>
+                          <Text style={styles.notificationTime}>{getFormattedTime(item.createdAt)}</Text>
+                        </View>
+                        <Text style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>{item.message}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 }}>
+                          <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: '#E2E8F0' }}>
+                            <Text style={{ fontSize: 10, color: '#475569', fontWeight: '600' }}>{item.type}</Text>
+                          </View>
+                          {!item.isRead && (
+                            <Text style={{ fontSize: 11, color: '#22C55E', fontWeight: '700' }}>• Unread</Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, { backgroundColor: '#F1F5F9', marginTop: 12 }]}
+              onPress={() => setShowAllNotifsModal(false)}
+            >
+              <Text style={[styles.modalSubmitBtnText, { color: '#64748B' }]}>Close Notifications Panel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2836,6 +3239,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  mobileDrawerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20000,
+    flexDirection: 'row',
+  },
+  mobileDrawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  mobileDrawerContent: {
+    width: 270,
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 20,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 20001,
   },
 });
 

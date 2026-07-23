@@ -7,6 +7,8 @@ export interface UserProfile {
   role: 'donor' | 'ngo' | 'volunteer' | 'admin';
   contactNumber: string;
   address?: string;
+  status?: string;
+  isActive?: boolean;
   gpsLocation?: {
     latitude: number;
     longitude: number;
@@ -24,11 +26,19 @@ interface AuthState {
   themeMode: 'light' | 'dark';
 }
 
+const getInitialThemeMode = (): 'light' | 'dark' => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const saved = window.localStorage.getItem('fs_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+  }
+  return 'light';
+};
+
 const initialState: AuthState = {
   token: null,
   user: null,
   isAuthenticated: false,
-  themeMode: 'light',
+  themeMode: getInitialThemeMode(),
 };
 
 const authSlice = createSlice({
@@ -89,6 +99,9 @@ const authSlice = createSlice({
     },
     toggleTheme: (state) => {
       state.themeMode = state.themeMode === 'light' ? 'dark' : 'light';
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('fs_theme', state.themeMode);
+      }
     },
     updateProfile: (state, action: PayloadAction<Partial<UserProfile>>) => {
       if (state.user) {

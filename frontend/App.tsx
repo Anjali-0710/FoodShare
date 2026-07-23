@@ -5,6 +5,7 @@ import { store, RootState } from './src/store';
 import { lightTheme, darkTheme } from './src/theme/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import NotificationToast from './src/components/NotificationToast';
+import AIChatbot from './src/components/chatbot/AIChatbot';
 import { supabase } from './src/services/supabase';
 import { NotificationService } from './src/services/notificationService';
 import { AuthService } from './src/services/authService';
@@ -150,6 +151,81 @@ const AppContent: React.FC = () => {
     };
   }, [isAuthenticated, user]);
 
+  // ── Suspension monitor for active logged in users ─────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    let isSubscribed = true;
+
+    const checkSuspensionStatus = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active, status')
+          .eq('id', user.id)
+          .single();
+
+        if (profile && isSubscribed) {
+          const statusVal = (profile.status || '').toLowerCase();
+          const isSuspended =
+            profile.is_active === false ||
+            statusVal === 'suspended' ||
+            statusVal === 'blocked' ||
+            statusVal === 'disabled' ||
+            statusVal === 'inactive';
+
+          if (isSuspended) {
+            console.warn('[SuspensionMonitor] Logged in user suspended. Executing logout...');
+            dispatch(logout());
+            await AuthService.logout();
+            setScreen('Login');
+            setToastMessage('Your account has been suspended. Please contact the administrator.');
+            setToastVisible(true);
+          }
+        }
+      } catch (err) {
+        console.warn('Suspension check warning:', err);
+      }
+    };
+
+    checkSuspensionStatus();
+    const interval = setInterval(checkSuspensionStatus, 8000);
+
+    const channel = supabase
+      .channel(`profile-suspension-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        async (payload) => {
+          if (!isSubscribed) return;
+          const updated = payload.new;
+          const statusVal = (updated?.status || '').toLowerCase();
+          const isSuspended =
+            updated?.is_active === false ||
+            statusVal === 'suspended' ||
+            statusVal === 'blocked' ||
+            statusVal === 'disabled' ||
+            statusVal === 'inactive';
+
+          if (isSuspended) {
+            console.warn('[SuspensionMonitor Realtime] User suspended. Executing logout...');
+            dispatch(logout());
+            await AuthService.logout();
+            setScreen('Login');
+            setToastMessage('Your account has been suspended. Please contact the administrator.');
+            setToastVisible(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, user?.id, dispatch]);
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <StatusBar
@@ -171,11 +247,14 @@ const AppContent: React.FC = () => {
             <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         ) : (
-          <AppNavigator
-            theme={theme}
-            currentScreen={screen}
-            setScreen={setScreen}
-          />
+          <>
+            <AppNavigator
+              theme={theme}
+              currentScreen={screen}
+              setScreen={setScreen}
+            />
+            {isAuthenticated && <AIChatbot theme={theme} />}
+          </>
         )}
       </View>
     </SafeAreaView>

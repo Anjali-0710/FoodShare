@@ -1,15 +1,44 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  ArrowLeft, Bell, CheckCheck, Trash2, MailOpen, Mail, ShieldAlert,
-  Calendar, Info, AlertTriangle, Truck, Award, CheckCircle, Package, Navigation
+  ArrowLeft,
+  Bell,
+  CheckCheck,
+  Trash2,
+  MailOpen,
+  Mail,
+  ShieldAlert,
+  Search,
+  X,
+  Package,
+  Truck,
+  Building2,
+  UserCheck,
+  Info,
+  CheckCircle,
+  Navigation,
+  Award,
 } from 'lucide-react-native';
 import { RootState } from '../../store';
 import {
-  setNotifications, markReadLocal, markAllReadLocal, deleteLocal, setLoading, setError
+  setNotifications,
+  markReadLocal,
+  markAllReadLocal,
+  deleteLocal,
+  setLoading,
+  setError,
 } from '../../store/notificationSlice';
 import NotificationService from '../../services/notificationService';
 import { AppTheme } from '../../theme/theme';
@@ -19,17 +48,24 @@ interface NotificationCenterScreenProps {
   navigate: (screen: string) => void;
 }
 
+export type CategoryFilter = 'All' | 'Donation' | 'Volunteer' | 'NGO' | 'Pickup' | 'System';
+
 export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> = ({
   theme,
   navigate,
 }) => {
   const dispatch = useDispatch();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+
   const { token, user } = useSelector((state: RootState) => state.auth);
   const { items, loading, error } = useSelector((state: RootState) => state.notification);
 
-  const [activeTab, setActiveTab] = useState<'All' | 'Unread' | 'Read' | 'Alerts'>('All');
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Fetch user notifications from Supabase
   const fetchNotifications = useCallback(async (isSilent = false) => {
     if (!user?.id) return;
     if (!isSilent) dispatch(setLoading(true));
@@ -42,11 +78,25 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
     } finally {
       setRefreshing(false);
     }
-  }, [token, dispatch]);
+  }, [user?.id, dispatch]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Real-time listener for incoming notifications
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = NotificationService.subscribeToNotifications(user.id, (newNotif) => {
+      fetchNotifications(true);
+    });
+
+    return () => {
+      if (channel) {
+        NotificationService.unsubscribe(channel);
+      }
+    };
+  }, [user?.id, fetchNotifications]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -97,46 +147,79 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
       if (user?.role === 'ngo') {
         navigate('NgoRequests');
       } else if (user?.role === 'donor') {
-        navigate('History'); // Donor History showing tracking lists
+        navigate('History');
       } else if (user?.role === 'volunteer') {
         navigate('PickupRoute');
+      } else if (user?.role === 'admin') {
+        navigate('Dashboard');
       }
     }
   };
 
-  // Filter notifications logic
-  const filteredItems = items.filter(item => {
-    if (activeTab === 'Unread') return !item.read;
-    if (activeTab === 'Read') return item.read;
-    if (activeTab === 'Alerts') return item.type === 'system_alert' || item.type.includes('warning');
-    return true; // 'All'
+  // Category matching helper
+  const matchesCategory = (item: any, category: CategoryFilter): boolean => {
+    if (category === 'All') return true;
+    const typeStr = (item.type || '').toLowerCase();
+    const titleStr = (item.title || '').toLowerCase();
+    const msgStr = (item.message || '').toLowerCase();
+
+    if (category === 'Donation') {
+      return typeStr.includes('donation') || typeStr.includes('food') || titleStr.includes('donation') || msgStr.includes('donation');
+    }
+    if (category === 'Volunteer') {
+      return typeStr.includes('volunteer') || typeStr.includes('karma') || titleStr.includes('volunteer') || msgStr.includes('volunteer');
+    }
+    if (category === 'NGO') {
+      return typeStr.includes('ngo') || titleStr.includes('ngo') || msgStr.includes('ngo');
+    }
+    if (category === 'Pickup') {
+      return typeStr.includes('pickup') || typeStr.includes('transit') || typeStr.includes('delivery') || titleStr.includes('pickup') || msgStr.includes('pickup');
+    }
+    if (category === 'System') {
+      return typeStr.includes('system') || typeStr.includes('alert') || typeStr.includes('info') || titleStr.includes('system') || msgStr.includes('system');
+    }
+    return true;
+  };
+
+  // Filtered & Searched Notifications
+  const filteredItems = items.filter((item) => {
+    const matchCat = matchesCategory(item, activeCategory);
+    const q = searchQuery.trim().toLowerCase();
+    const matchQuery =
+      !q ||
+      (item.title || '').toLowerCase().includes(q) ||
+      (item.message || '').toLowerCase().includes(q);
+    return matchCat && matchQuery;
   });
 
-  const getIcon = (type: string, readStatus: boolean) => {
+  const getCategoryIcon = (type: string, readStatus: boolean) => {
     const iconSize = 20;
-    const color = readStatus ? theme.colors.textSecondary : theme.colors.primary;
-    
-    switch (type) {
-      case 'new_donation':
-        return <Package size={iconSize} color={theme.colors.success || '#10B981'} />;
-      case 'accepted':
-        return <CheckCircle size={iconSize} color={theme.colors.primary} />;
-      case 'volunteer_assigned':
-        return <Truck size={iconSize} color={theme.colors.info} />;
-      case 'pickup_started':
-        return <Navigation size={iconSize} color={theme.colors.accent} />;
-      case 'delivery_completed':
-        return <Award size={iconSize} color={theme.colors.success || '#10B981'} />;
-      case 'completion_confirmation':
-        return <CheckSquare size={iconSize} color={theme.colors.success || '#10B981'} />;
-      case 'system_alert':
-        return <ShieldAlert size={iconSize} color={theme.colors.error} />;
-      default:
-        return readStatus ? <MailOpen size={iconSize} color={color} /> : <Mail size={iconSize} color={color} />;
+    const typeStr = (type || '').toLowerCase();
+
+    if (typeStr.includes('donation') || typeStr.includes('food')) {
+      return <Package size={iconSize} color="#22C55E" />;
     }
+    if (typeStr.includes('pickup') || typeStr.includes('transit') || typeStr.includes('delivery')) {
+      return <Truck size={iconSize} color="#3B82F6" />;
+    }
+    if (typeStr.includes('volunteer') || typeStr.includes('karma')) {
+      return <UserCheck size={iconSize} color="#8B5CF6" />;
+    }
+    if (typeStr.includes('ngo')) {
+      return <Building2 size={iconSize} color="#F59E0B" />;
+    }
+    if (typeStr.includes('alert') || typeStr.includes('warning')) {
+      return <ShieldAlert size={iconSize} color="#EF4444" />;
+    }
+    return readStatus ? (
+      <MailOpen size={iconSize} color={theme.colors.textSecondary} />
+    ) : (
+      <Mail size={iconSize} color={theme.colors.primary} />
+    );
   };
 
   const getFormattedTime = (isoString: string) => {
+    if (!isoString) return 'Recent';
     const diffMs = Date.now() - new Date(isoString).getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -147,7 +230,6 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
     return new Date(isoString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
     });
   };
 
@@ -157,65 +239,93 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
         styles.notifCard,
         {
           backgroundColor: theme.colors.card,
-          borderColor: item.read ? theme.colors.border : theme.colors.primary + '33',
-        }
+          borderColor: item.read ? theme.colors.border : theme.colors.primary + '40',
+        },
       ]}
     >
+      {!item.read && <View style={[styles.unreadBadgeDot, { backgroundColor: theme.colors.primary }]} />}
       <TouchableOpacity
         style={styles.cardMain}
         onPress={() => handleNotificationTap(item)}
-        id={`btn-tap-notif-${item._id}`}
+        activeOpacity={0.8}
       >
         <View style={[styles.iconBox, { backgroundColor: theme.colors.background }]}>
-          {getIcon(item.type, item.read)}
+          {getCategoryIcon(item.type, item.read)}
         </View>
         <View style={styles.textContainer}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: theme.colors.text }, !item.read && styles.boldText]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: theme.colors.text },
+                !item.read && styles.boldText,
+              ]}
+              numberOfLines={1}
+            >
               {item.title || 'Notification Update'}
             </Text>
             <Text style={[styles.timeText, { color: theme.colors.textSecondary }]}>
               {getFormattedTime(item.createdAt)}
             </Text>
           </View>
-          <Text style={[styles.messageText, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+          <Text
+            style={[styles.messageText, { color: theme.colors.textSecondary }]}
+            numberOfLines={3}
+          >
             {item.message}
           </Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={() => handleDelete(item._id || item.id)}
-        id={`btn-delete-notif-${item._id}`}
-      >
-        <Trash2 size={16} color={theme.colors.error} style={{ opacity: 0.7 }} />
-      </TouchableOpacity>
+      <View style={styles.cardActionsGroup}>
+        {!item.read && (
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            onPress={() => handleMarkRead(item._id || item.id)}
+            accessibilityLabel="Mark as read"
+          >
+            <CheckCircle size={15} color={theme.colors.primary} />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={styles.actionIconButton}
+          onPress={() => handleDelete(item._id || item.id)}
+          accessibilityLabel="Delete notification"
+        >
+          <Trash2 size={15} color={theme.colors.error} style={{ opacity: 0.75 }} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
-  const unreadCount = items.filter(n => !n.read).length;
+  const unreadCount = items.filter((n) => !n.read).length;
+  const categories: CategoryFilter[] = ['All', 'Donation', 'Volunteer', 'NGO', 'Pickup', 'System'];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* HEADER BAR */}
+      <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
         <View style={styles.leftHeader}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigate('Dashboard')}
-            id="btn-notif-center-back"
+            accessibilityLabel="Go back to Dashboard"
           >
             <ArrowLeft size={20} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Notification Center</Text>
+          <View>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Notifications Center</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
+              {unreadCount > 0 ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}` : 'All notifications up to date'}
+            </Text>
+          </View>
         </View>
 
         {unreadCount > 0 && (
           <TouchableOpacity
-            style={styles.markAllBtn}
+            style={[styles.markAllBtn, { backgroundColor: theme.colors.primary + '18' }]}
             onPress={handleMarkAllRead}
-            id="btn-notif-center-mark-all"
+            accessibilityLabel="Mark all as read"
           >
             <CheckCheck size={16} color={theme.colors.primary} style={{ marginRight: 4 }} />
             <Text style={[styles.markAllText, { color: theme.colors.primary }]}>Mark all read</Text>
@@ -223,222 +333,283 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
         )}
       </View>
 
-      {/* Tabs Menu */}
-      <View style={[styles.tabsMenu, { borderBottomColor: theme.colors.border }]}>
-        {(['All', 'Unread', 'Read', 'Alerts'] as const).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tabBtn,
-              activeTab === tab && { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 }
-            ]}
-            onPress={() => setActiveTab(tab)}
-            id={`tab-notif-${tab}`}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary },
-                activeTab === tab && styles.boldText
-              ]}
-            >
-              {tab}
+      {/* CENTER WRAPPER FOR RESPONSIVE DESKTOP LAYOUT */}
+      <View style={[styles.contentWrapper, { maxWidth: isDesktop ? 900 : '100%' }]}>
+        {/* SEARCH BAR */}
+        <View style={[styles.searchBarRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Search size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.colors.text }]}
+            placeholder="Search notifications by title or message..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <X size={16} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* CATEGORY FILTERS CHIPS BAR */}
+        <View style={styles.categoryChipsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.chipBtn,
+                    {
+                      backgroundColor: isActive ? theme.colors.primary : theme.colors.card,
+                      borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                    },
+                  ]}
+                  onPress={() => setActiveCategory(cat)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isActive ? '#FFFFFF' : theme.colors.textSecondary },
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ERROR BANNER */}
+        {error && (
+          <View style={[styles.errorBox, { backgroundColor: theme.colors.error + '1A', borderColor: theme.colors.error }]}>
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
+          </View>
+        )}
+
+        {/* NOTIFICATIONS LIST CONTENT */}
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading notifications...</Text>
+          </View>
+        ) : filteredItems.length === 0 ? (
+          <View style={styles.center}>
+            <Bell size={48} color={theme.colors.textSecondary} style={{ marginBottom: 16, opacity: 0.4 }} />
+            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications found</Text>
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              {searchQuery
+                ? `No notifications match "${searchQuery}".`
+                : activeCategory !== 'All'
+                ? `No ${activeCategory} notifications available.`
+                : 'All caught up! Real-time alerts will appear here when updates occur.'}
             </Text>
-          </TouchableOpacity>
-        ))}
+          </View>
+        ) : (
+          <FlatList
+            data={filteredItems}
+            keyExtractor={(item: any) => item._id || item.id}
+            renderItem={renderNotificationCard}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+            }
+          />
+        )}
       </View>
-
-      {error && (
-        <View style={[styles.errorBox, { backgroundColor: theme.colors.error + '1A', borderColor: theme.colors.error }]}>
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
-        </View>
-      )}
-
-      {/* List content */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : filteredItems.length === 0 ? (
-        <View style={styles.center}>
-          <Bell size={48} color={theme.colors.textSecondary} style={{ marginBottom: 16, opacity: 0.5 }} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No notifications available</Text>
-          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-            All caught up! Alerts will appear here when donation updates occur.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredItems}
-          keyExtractor={(item: any) => item._id || item.id}
-          renderItem={renderNotificationCard}
-          contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
-        />
-      )}
     </View>
   );
 };
 
-// Quick helper
-const CheckSquare: React.FC<{ size: number; color: string; style?: any }> = ({ size, color, style }) => (
-  <View style={style}><CheckCircle size={size} color={color} /></View>
-);
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 40,
+    paddingHorizontal: 20,
+    paddingTop: 44,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.1)'
   },
   leftHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 12,
   },
   backBtn: {
-    padding: 8
+    padding: 6,
+    borderRadius: 8,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    marginTop: 1,
   },
   markAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10
+    paddingHorizontal: 12,
+    borderRadius: 14,
   },
   markAllText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
-  },
-  tabsMenu: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingHorizontal: 8
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  tabText: {
     fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontWeight: '700',
+  },
+  contentWrapper: {
+    flex: 1,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  searchBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 44,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+  },
+  categoryChipsContainer: {
+    marginBottom: 12,
+  },
+  chipsScroll: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  chipBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   list: {
-    padding: 16
+    paddingBottom: 24,
   },
   notifCard: {
-    borderRadius: 16,
+    position: 'relative',
+    borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 12,
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     overflow: 'hidden',
     elevation: 2,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  unreadBadgeDot: {
+    position: 'absolute',
+    top: 14,
+    left: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    zIndex: 10,
   },
   cardMain: {
     flex: 1,
     flexDirection: 'row',
     padding: 14,
-    alignItems: 'center'
+    paddingLeft: 22,
+    alignItems: 'center',
   },
   iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12
+    marginRight: 14,
   },
   textContainer: {
     flex: 1,
-    paddingRight: 6
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 4
+    marginBottom: 4,
   },
   cardTitle: {
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: '600',
     flex: 1,
-    marginRight: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    marginRight: 8,
   },
   boldText: {
     fontWeight: '800',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
   },
   timeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
   },
   messageText: {
-    fontSize: 10.5,
-    lineHeight: 14,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    fontSize: 11.5,
+    lineHeight: 16,
   },
-  deleteBtn: {
-    width: 44,
+  cardActionsGroup: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(128,128,128,0.1)'
+    paddingRight: 12,
+    gap: 6,
+  },
+  actionIconButton: {
+    padding: 6,
+    borderRadius: 8,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 30
+    padding: 36,
+  },
+  loadingText: {
+    fontSize: 13,
+    marginTop: 10,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 6,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: 12.5,
     textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 20,
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
+    lineHeight: 18,
   },
   errorBox: {
-    margin: 16,
+    marginBottom: 12,
     padding: 10,
     borderRadius: 12,
-    borderWidth: 1
+    borderWidth: 1,
   },
   errorText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Outfit, system-ui, -apple-system, sans-serif'
-  }
+  },
 });
 
 export default NotificationCenterScreen;
