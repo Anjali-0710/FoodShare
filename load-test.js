@@ -11,8 +11,11 @@
  *     4. GET  /api/ai/demand (AI Category Demand Prediction)
  */
 
-const BACKEND_URL = 'http://localhost:5000/api';
-const HEALTH_URL = 'http://localhost:5000/health';
+const HOST = process.env.TEST_HOST || '127.0.0.1';
+const PORT = process.env.TEST_PORT || '5000';
+const BASE_URL = `http://${HOST}:${PORT}`;
+const BACKEND_URL = `${BASE_URL}/api`;
+const HEALTH_URL = `${BASE_URL}/health`;
 
 const VIRTUAL_USERS = 100;
 const DURATION_SECONDS = 60;
@@ -89,7 +92,7 @@ async function runLoadTest() {
 
   console.log(`• Virtual Users (Concurrent Workers): ${VIRTUAL_USERS}`);
   console.log(`• Test Duration:                      ${DURATION_SECONDS} seconds (1 minute)`);
-  console.log(`• Target Server:                       http://localhost:5000`);
+  console.log(`• Target Server:                       ${BASE_URL}`);
   console.log(`• Target Endpoints:                   ${ENDPOINTS.length} endpoints`);
   console.log('===========================================================\n');
 
