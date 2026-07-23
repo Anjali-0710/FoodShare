@@ -18,7 +18,7 @@ concurrency:
 
 env:
   BASE_URL: "https://Anjali-0710.github.io/FoodShare/"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
