@@ -87,8 +87,9 @@ const startServer = async () => {
   // Run startup connection audit test
   await testGroqConnection();
 
-  app.listen(PORT, () => {
-    console.log(`🚀 FoodReach Backend listening on http://localhost:${PORT}`);
+  const host = process.env.HOST || '0.0.0.0';
+  app.listen(Number(PORT), host, () => {
+    console.log(`🚀 FoodReach Backend listening on http://${host}:${PORT}`);
     console.log(`📊 Database: Supabase PostgreSQL (always-on)`);
     console.log(`🔐 Auth: Supabase Auth`);
   });
