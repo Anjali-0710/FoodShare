@@ -36,7 +36,6 @@ import NotificationCenterScreen from '../screens/shared/NotificationCenterScreen
 import NotificationHistoryScreen from '../screens/shared/NotificationHistoryScreen';
 import MapsPlaygroundScreen from '../screens/shared/MapsPlaygroundScreen';
 import ImageUploadPlaygroundScreen from '../screens/shared/ImageUploadPlaygroundScreen';
-import AIChatScreen from '../screens/shared/AIChatScreen';
 
 import AdminDashboard from '../screens/admin/AdminDashboard';
 
@@ -168,8 +167,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
           return <MapsPlaygroundScreen theme={theme} navigate={setScreen} />;
         case 'ImageUploadPlayground':
           return <ImageUploadPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'AIChat':
-          return <AIChatScreen theme={theme} navigate={setScreen} />;
         case 'Dashboard':
         default:
           return <DonorDashboard theme={theme} navigate={setScreen} />;
@@ -199,8 +196,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
           return <MapsPlaygroundScreen theme={theme} navigate={setScreen} />;
         case 'ImageUploadPlayground':
           return <ImageUploadPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'AIChat':
-          return <AIChatScreen theme={theme} navigate={setScreen} />;
         case 'Dashboard':
         default:
           return <NgoDashboard theme={theme} navigate={setScreen} />;
@@ -228,8 +223,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
           return <MapsPlaygroundScreen theme={theme} navigate={setScreen} />;
         case 'ImageUploadPlayground':
           return <ImageUploadPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'AIChat':
-          return <AIChatScreen theme={theme} navigate={setScreen} />;
         case 'Dashboard':
         default:
           return <VolunteerDashboard theme={theme} navigate={setScreen} />;
@@ -250,8 +243,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
           return <MapsPlaygroundScreen theme={theme} navigate={setScreen} />;
         case 'ImageUploadPlayground':
           return <ImageUploadPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'AIChat':
-          return <AIChatScreen theme={theme} navigate={setScreen} />;
         case 'Dashboard':
         default:
           return <AdminDashboard theme={theme} navigate={setScreen} />;

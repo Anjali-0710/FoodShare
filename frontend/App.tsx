@@ -253,9 +253,7 @@ const AppContent: React.FC = () => {
               currentScreen={screen}
               setScreen={setScreen}
             />
-            {isAuthenticated && screen !== 'AIChat' && screen !== 'AIChatScreen' && (
-              <AIChatbot theme={theme} />
-            )}
+            {isAuthenticated && <AIChatbot theme={theme} />}
           </>
         )}
       </View>
