@@ -61,38 +61,60 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
-      - name: Start FoodReach Backend Server & Log Startup
+      - name: Start FoodReach Backend & Verify Readiness
         working-directory: ./backend
         env:
           PORT: 5000
           HOST: 0.0.0.0
           NODE_ENV: test
         run: |
-          node dist/server.js > ../backend-server.log 2>&1 &
-          echo $! > ../backend-server.pid
-          sleep 2
+          echo "=== 1. STARTING BACKEND SERVICE ==="
+          nohup node dist/server.js > ../backend-server.log 2>&1 &
+          SERVER_PID=$!
+          echo $SERVER_PID > ../backend-server.pid
+          echo "Started backend server process PID: $SERVER_PID"
 
-      - name: Verify Backend Readiness (Health Check Loop)
-        run: |
-          echo "Checking backend health readiness on http://127.0.0.1:5000/health..."
-          for i in {1..15}; do
+          echo "=== 2. ENVIRONMENT & PROCESS DIAGNOSTICS ==="
+          echo "Node version: $(node -v)"
+          echo "Working directory: $(pwd)"
+          echo "Active Environment Variables (non-sensitive):"
+          env | grep -E '^(PORT|HOST|NODE_ENV|PATH|PWD)' || true
+
+          echo "=== 3. HEALTH CHECK READINESS RETRY LOOP (60s MAX) ==="
+          echo "Polling http://127.0.0.1:5000/health for HTTP 200..."
+
+          SUCCESS=false
+          for i in {1..30}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/health || echo "000")
+            echo "  [Attempt $i/30] Health Check Status: $STATUS"
             if [ "$STATUS" = "200" ]; then
-              echo "✓ Backend server is READY and responding with HTTP 200!"
-              echo "=== HEALTH ENDPOINT RESPONSE ==="
-              curl -s http://127.0.0.1:5000/health
-              echo ""
-              echo "=== BACKEND STARTUP LOGS ==="
-              cat backend-server.log || true
-              exit 0
+              SUCCESS=true
+              break
             fi
-            echo "Attempt $i: Status $STATUS. Waiting 2 seconds..."
+
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ BACKEND PROCESS CRASHED (PID $SERVER_PID IS DEAD)!"
+              break
+            fi
             sleep 2
           done
 
-          echo "❌ Backend server failed to respond with HTTP 200. FULL BACKEND LOGS:"
-          cat backend-server.log || true
-          exit 1
+          echo "=== 4. RUNNING PROCESSES & LISTENING PORTS ==="
+          ps aux | grep -i node || true
+          netstat -tlpn 2>/dev/null || ss -tulpn 2>/dev/null || lsof -i :5000 2>/dev/null || true
+
+          echo "=== 5. COMPLETE BACKEND STARTUP LOGS ==="
+          cat ../backend-server.log || true
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✓ BACKEND SERVER IS HEALTHY & READY!"
+            echo "=== HEALTH ENDPOINT RESPONSE ==="
+            curl -s http://127.0.0.1:5000/health
+            echo ""
+          else
+            echo "❌ BACKEND FAILED READINESS CHECK (HTTP 200 NOT RETURNED)"
+            exit 1
+          fi
 
       - name: Run API Verification Integration Tests
         env:
