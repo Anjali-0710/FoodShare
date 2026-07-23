@@ -8,15 +8,17 @@ import { mockUsers } from '../config/mockDb';
 // Global mock list to persist notifications while backend is running in-memory
 export const mockNotifications: any[] = [];
 
-// Helper to create notifications programmatically
-export const createNotificationInternal = async (params: {
+interface NotificationPayload {
   userId: string;
-  role: 'donor' | 'ngo' | 'volunteer' | 'admin';
+  role: 'donor' | 'ngo' | 'admin';
   type: string;
   title: string;
   message: string;
   donationId?: string;
-}) => {
+}
+
+// Helper to create notifications programmatically
+export const createNotificationInternal = async (params: NotificationPayload) => {
   try {
     const isDb = getDbStatus();
     if (isDb) {

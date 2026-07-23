@@ -27,11 +27,6 @@ import NgoRequestsScreen from '../screens/ngo/NgoRequestsScreen';
 import NgoDonationDetailScreen from '../screens/ngo/NgoDonationDetailScreen';
 import NgoNotificationsScreen from '../screens/ngo/NgoNotificationsScreen';
 
-import VolunteerDashboard from '../screens/volunteer/VolunteerDashboard';
-import PickupRouteScreen from '../screens/volunteer/PickupRouteScreen';
-import LeaderboardScreen from '../screens/volunteer/LeaderboardScreen';
-import VolunteerHistoryScreen from '../screens/volunteer/VolunteerHistoryScreen';
-import VolunteerNotificationsScreen from '../screens/volunteer/VolunteerNotificationsScreen';
 import NotificationCenterScreen from '../screens/shared/NotificationCenterScreen';
 import NotificationHistoryScreen from '../screens/shared/NotificationHistoryScreen';
 import MapsPlaygroundScreen from '../screens/shared/MapsPlaygroundScreen';
@@ -199,33 +194,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         case 'Dashboard':
         default:
           return <NgoDashboard theme={theme} navigate={setScreen} />;
-      }
-
-    case 'volunteer':
-      switch (currentScreen) {
-        case 'PickupRoute':
-          return <PickupRouteScreen theme={theme} navigate={setScreen} />;
-        case 'Leaderboard':
-          return <LeaderboardScreen theme={theme} navigate={setScreen} />;
-        case 'VolunteerHistory':
-          return <VolunteerHistoryScreen theme={theme} navigate={setScreen} />;
-        case 'VolunteerNotifications':
-          return <VolunteerNotificationsScreen theme={theme} navigate={setScreen} />;
-        case 'NotificationCenter':
-        case 'Notifications':
-        case 'NotificationCenterScreen':
-          return <NotificationCenterScreen theme={theme} navigate={setScreen} />;
-        case 'NotificationHistory':
-          return <NotificationHistoryScreen theme={theme} navigate={setScreen} />;
-        case 'Profile':
-          return <ProfileScreen theme={theme} navigate={setScreen} />;
-        case 'MapsPlayground':
-          return <MapsPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'ImageUploadPlayground':
-          return <ImageUploadPlaygroundScreen theme={theme} navigate={setScreen} />;
-        case 'Dashboard':
-        default:
-          return <VolunteerDashboard theme={theme} navigate={setScreen} />;
       }
 
     case 'admin':

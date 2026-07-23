@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 export interface INotification extends Document {
   userId: Types.ObjectId | string;
-  role: 'donor' | 'ngo' | 'volunteer' | 'admin';
+  role: 'donor' | 'ngo' | 'admin';
   type: string;
   title: string;
   message: string;
@@ -13,7 +13,7 @@ export interface INotification extends Document {
 
 const NotificationSchema = new Schema<INotification>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  role: { type: String, enum: ['donor', 'ngo', 'volunteer', 'admin'], required: true },
+  role: { type: String, enum: ['donor', 'ngo', 'admin'], required: true },
   type: { type: String, required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },

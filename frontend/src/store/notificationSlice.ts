@@ -3,7 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface NotificationItem {
   _id: string;
   userId: string;
-  role: 'donor' | 'ngo' | 'volunteer' | 'admin';
+  role: 'donor' | 'ngo' | 'admin';
   type: string;
   title: string;
   message: string;

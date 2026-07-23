@@ -5,14 +5,14 @@ export interface MockUser {
   name: string;
   email: string;
   passwordHash: string;
-  role: 'donor' | 'ngo' | 'volunteer' | 'admin';
+  role: 'donor' | 'ngo' | 'admin';
   contactNumber: string;
   address: string;
   gpsLocation: { latitude: number; longitude: number };
   ngoCapacity?: number;
   foodTypePreference?: string[];
-  volunteerScore: number;
-  completedPickups: number;
+  volunteerScore?: number;
+  completedPickups?: number;
   resetPasswordCode?: string;
   resetPasswordExpires?: Date;
   isVerified?: boolean;
@@ -117,7 +117,7 @@ export const seedMockDatabase = async () => {
       name: 'Rohan Sharma',
       email: 'volunteer@foodreach.com',
       passwordHash: commonPasswordHash,
-      role: 'volunteer',
+      role: 'ngo',
       contactNumber: '+919555444333',
       address: 'Rajendra Place, New Delhi',
       gpsLocation: { latitude: 28.6421, longitude: 77.1782 },
@@ -131,7 +131,7 @@ export const seedMockDatabase = async () => {
       name: 'Anjali Gupta',
       email: 'anjali@foodreach.com',
       passwordHash: commonPasswordHash,
-      role: 'volunteer',
+      role: 'ngo',
       contactNumber: '+919666777888',
       address: 'Saket, New Delhi',
       gpsLocation: { latitude: 28.5244, longitude: 77.2066 },

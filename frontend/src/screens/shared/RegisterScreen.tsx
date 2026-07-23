@@ -20,7 +20,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'donor' | 'ngo' | 'volunteer' | 'admin' | null>(null);
+  const [role, setRole] = useState<'donor' | 'ngo' | 'admin' | null>(null);
   const [contactNumber, setContactNumber] = useState('');
   const [address, setAddress] = useState('');
   const [adminCode, setAdminCode] = useState('');
@@ -163,14 +163,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate 
           </TouchableOpacity>
 
           <TouchableOpacity
-            id="tab-role-volunteer"
-            style={[styles.roleTab, role === 'volunteer' && { backgroundColor: theme.colors.primary }]}
-            onPress={() => setRole('volunteer')}
-          >
-            <Text style={[styles.roleTabText, { color: role === 'volunteer' ? '#FFFFFF' : theme.colors.text }]}>Volunteer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             id="tab-role-admin"
             style={[styles.roleTab, role === 'admin' && { backgroundColor: '#7C3AED' }]}
             onPress={() => setRole('admin')}
@@ -307,8 +299,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ theme, navigate 
           </View>
         )}
 
-        {/* NGO/Volunteer food preferences */}
-        {(role === 'ngo' || role === 'volunteer') && (
+        {/* NGO food preferences */}
+        {role === 'ngo' && (
           <View style={styles.roleExtraCard}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
               {role === 'ngo' ? 'Target Food Requirements' : 'Preferred Categories'}

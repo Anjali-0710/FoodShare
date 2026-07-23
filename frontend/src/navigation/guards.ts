@@ -4,7 +4,6 @@
 export const ROLE_SCREENS: Record<string, string[]> = {
   donor:     ['Dashboard', 'CreateDonation', 'TrackDonation', 'History', 'DonationList', 'DonationDetail', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
   ngo:       ['Dashboard', 'BrowseDonations', 'NgoRequests', 'NgoDonationDetail', 'NgoNotifications', 'History', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
-  volunteer: ['Dashboard', 'PickupRoute', 'Leaderboard', 'Profile', 'VolunteerHistory', 'VolunteerNotifications', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
   admin:     ['Dashboard', 'Profile', 'NotificationCenter', 'Notifications', 'NotificationCenterScreen', 'AdminNotifications', 'NotificationHistory', 'MapsPlayground', 'ImageUploadPlayground'],
 };
 

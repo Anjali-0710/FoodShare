@@ -36,7 +36,6 @@ interface ProfileScreenProps {
 const ROLE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
   donor: { label: 'Food Donor', color: '#22C55E', emoji: '🥗' },
   ngo: { label: 'NGO Partner', color: '#3B82F6', emoji: '🏢' },
-  volunteer: { label: 'Volunteer', color: '#8B5CF6', emoji: '🚴' },
   admin: { label: 'Administrator', color: '#EF4444', emoji: '🔐' },
 };
 

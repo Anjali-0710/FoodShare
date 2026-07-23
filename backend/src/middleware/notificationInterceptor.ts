@@ -177,13 +177,13 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
         });
       }
 
-      // Notify Volunteer
+      // Notify NGO
       if (volunteerId) {
         await createNotificationInternal({
           userId: volunteerId,
-          role: 'volunteer',
+          role: 'ngo',
           type: 'new_assignment',
-          title: 'New Delivery Assigned! 🚚',
+          title: 'New Delivery Claimed! 🚚',
           message: `You claimed transport for ${foodType} from "${donorName}" to "${ngoName}".`,
           donationId: donation.id || donation._id
         });
@@ -196,8 +196,8 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
           userId: admin.id || (admin as any)._id,
           role: 'admin',
           type: 'donation_activity',
-          title: 'Volunteer Claimed Route',
-          message: `Volunteer "${volunteerName}" assigned to deliver donation from "${donorName}" to "${ngoName}".`,
+          title: 'NGO Claimed Route',
+          message: `NGO "${volunteerName}" assigned to deliver donation from "${donorName}" to "${ngoName}".`,
           donationId: donation.id || donation._id
         });
       }
@@ -214,7 +214,7 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
       const donorId = donation.donorId;
       const ngoId = donation.ngoId;
       const volunteerId = donation.volunteerId;
-      const volunteerName = donation.volunteerName || req.user?.name || 'Volunteer';
+      const volunteerName = donation.volunteerName || req.user?.name || 'NGO';
       const ngoName = donation.ngoName || 'NGO';
       const foodType = donation.foodType;
 
@@ -226,16 +226,16 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
             role: 'donor',
             type: 'pickup_started',
             title: 'Donation Dispatched 📦',
-            message: `Volunteer "${volunteerName}" has picked up your surplus food.`,
+            message: `NGO "${volunteerName}" has picked up your surplus food.`,
             donationId: donation.id || donation._id
           });
         }
 
-        // Notify Volunteer
+        // Notify NGO
         if (volunteerId) {
           await createNotificationInternal({
             userId: volunteerId,
-            role: 'volunteer',
+            role: 'ngo',
             type: 'pickup_reminder',
             title: 'Pickup Confirmed! ✅',
             message: `Cargo loaded. Drive to dropoff location: "${ngoName}".`,
@@ -250,19 +250,7 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
             role: 'ngo',
             type: 'delivery_completed',
             title: 'Delivery Arrived! 🏢',
-            message: `Volunteer "${volunteerName}" arrived with your food donation. Open details to scan QR and finalize.`,
-            donationId: donation.id || donation._id
-          });
-        }
-
-        // Notify Volunteer
-        if (volunteerId) {
-          await createNotificationInternal({
-            userId: volunteerId,
-            role: 'volunteer',
-            type: 'delivery_reminder',
-            title: 'Arrived at Dropoff',
-            message: `Cargo delivered. Request the NGO representative to scan the verification code.`,
+            message: `NGO "${volunteerName}" arrived with your food donation. Open details to scan QR and finalize.`,
             donationId: donation.id || donation._id
           });
         }
@@ -279,7 +267,7 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
       const ngoId = donation.ngoId;
       const volunteerId = donation.volunteerId;
       const ngoName = donation.ngoName || 'NGO';
-      const volunteerName = donation.volunteerName || 'Volunteer';
+      const volunteerName = donation.volunteerName || 'NGO';
       const foodType = donation.foodType;
 
       // Notify Donor
@@ -302,18 +290,6 @@ const handleNotificationTrigger = async (req: AuthenticatedRequest, body: any) =
           type: 'delivery_completed',
           title: 'Delivery Verified 🎉',
           message: `QR code successfully verified. Food donation of ${foodType} marked completed.`,
-          donationId: donation.id || donation._id
-        });
-      }
-
-      // Notify Volunteer
-      if (volunteerId) {
-        await createNotificationInternal({
-          userId: volunteerId,
-          role: 'volunteer',
-          type: 'completion_confirmation',
-          title: 'Task Completed! 🌟',
-          message: `Verification complete. You have earned +50 Karma points for this delivery.`,
           donationId: donation.id || donation._id
         });
       }

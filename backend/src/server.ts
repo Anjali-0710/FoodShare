@@ -7,7 +7,6 @@ import cors from 'cors';
 import path from 'path';
 import authRoutes from './routes/authRoutes';
 import donationRoutes from './routes/donationRoutes';
-import volunteerRoutes from './routes/volunteerRoutes';
 import adminRoutes from './routes/adminRoutes';
 import aiRoutes from './routes/ai';
 import notificationRoutes from './routes/notificationRoutes';
@@ -53,7 +52,6 @@ app.get('/health', (req, res) => {
 // These routes handle AI, email, upload, and legacy compatibility.
 app.use('/api/auth', authRoutes);
 app.use('/api/donations', donationRoutes);
-app.use('/api/volunteer', volunteerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notifications', notificationRoutes);

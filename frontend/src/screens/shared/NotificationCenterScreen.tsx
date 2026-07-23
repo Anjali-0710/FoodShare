@@ -148,8 +148,6 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
         navigate('NgoRequests');
       } else if (user?.role === 'donor') {
         navigate('History');
-      } else if (user?.role === 'volunteer') {
-        navigate('PickupRoute');
       } else if (user?.role === 'admin') {
         navigate('Dashboard');
       }

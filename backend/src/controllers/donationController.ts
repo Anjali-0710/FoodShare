@@ -260,7 +260,7 @@ export const acceptDonation = async (req: AuthenticatedRequest, res: Response) =
       return res.status(400).json({ success: false, message: 'Donation could not be accepted or is already claimed' });
     }
 
-    return res.status(200).json({ success: true, message: 'Donation accepted. Pending volunteer pickup assignment.', donation: updatedDonation });
+    return res.status(200).json({ success: true, message: 'Donation accepted by NGO successfully.', donation: updatedDonation });
   } catch (error: any) {
     console.error('Accept donation error:', error);
     return res.status(500).json({ success: false, message: 'Server error accepting donation' });
@@ -448,15 +448,6 @@ export const verifyQR = async (req: AuthenticatedRequest, res: Response) => {
         }
 
         mockDonations[dIndex].status = 'Completed';
-        
-        // Reward volunteer
-        if (donation.volunteerId) {
-          const vIndex = mockUsers.findIndex(u => u.id === donation.volunteerId);
-          if (vIndex !== -1) {
-            mockUsers[vIndex].volunteerScore += 50;
-            mockUsers[vIndex].completedPickups += 1;
-          }
-        }
 
         mockSystemLogs.unshift({
           id: `log_${Date.now()}`,

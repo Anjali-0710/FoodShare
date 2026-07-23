@@ -4,7 +4,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: 'donor' | 'ngo' | 'volunteer' | 'admin';
+  role: 'donor' | 'ngo' | 'admin';
   contactNumber: string;
   address?: string;
   status?: string;
@@ -15,7 +15,6 @@ export interface UserProfile {
   };
   ngoCapacity?: number;
   foodTypePreference?: string[];
-  volunteerScore?: number;
   completedPickups?: number;
 }
 
@@ -115,15 +114,9 @@ const authSlice = createSlice({
           }
         }
       }
-    },
-    updateKarmaPoints: (state, action: PayloadAction<number>) => {
-      if (state.user && state.user.role === 'volunteer') {
-        state.user.volunteerScore = (state.user.volunteerScore || 0) + action.payload;
-        state.user.completedPickups = (state.user.completedPickups || 0) + 1;
-      }
     }
   },
 });
 
-export const { setCredentials, logout, toggleTheme, updateProfile, updateKarmaPoints } = authSlice.actions;
+export const { setCredentials, logout, toggleTheme, updateProfile } = authSlice.actions;
 export default authSlice.reducer;

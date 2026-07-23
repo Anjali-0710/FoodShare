@@ -62,7 +62,7 @@ export const register = async (req: Request, res: Response) => {
         address,
         gpsLocation,
         ngoCapacity: role === 'ngo' ? (ngoCapacity || 100) : undefined,
-        foodTypePreference: (role === 'ngo' || role === 'volunteer') ? (foodTypePreference || []) : undefined,
+        foodTypePreference: role === 'ngo' ? (foodTypePreference || []) : undefined,
         isVerified: false,
         verificationCode: otp,
         verificationExpires: expires
@@ -89,9 +89,7 @@ export const register = async (req: Request, res: Response) => {
         address: address || '',
         gpsLocation: gpsLocation || { latitude: 28.6139, longitude: 77.2090 }, // Default Delhi coords
         ngoCapacity: role === 'ngo' ? (Number(ngoCapacity) || 100) : undefined,
-        foodTypePreference: (role === 'ngo' || role === 'volunteer') ? (foodTypePreference || []) : [],
-        volunteerScore: 0,
-        completedPickups: 0,
+        foodTypePreference: role === 'ngo' ? (foodTypePreference || []) : [],
         isVerified: false,
         verificationCode: otp,
         verificationExpires: expires,
@@ -178,9 +176,7 @@ export const login = async (req: Request, res: Response) => {
             address: dbUser.address,
             gpsLocation: dbUser.gpsLocation,
             ngoCapacity: dbUser.ngoCapacity,
-            foodTypePreference: dbUser.foodTypePreference,
-            volunteerScore: dbUser.volunteerScore,
-            completedPickups: dbUser.completedPickups
+            foodTypePreference: dbUser.foodTypePreference
           };
         }
       }
@@ -392,9 +388,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
           address: dbUser.address,
           gpsLocation: dbUser.gpsLocation,
           ngoCapacity: dbUser.ngoCapacity,
-          foodTypePreference: dbUser.foodTypePreference,
-          volunteerScore: dbUser.volunteerScore,
-          completedPickups: dbUser.completedPickups
+          foodTypePreference: dbUser.foodTypePreference
         };
       }
     } else {
@@ -414,9 +408,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
           address: mockUser.address,
           gpsLocation: mockUser.gpsLocation,
           ngoCapacity: mockUser.ngoCapacity,
-          foodTypePreference: mockUser.foodTypePreference,
-          volunteerScore: mockUser.volunteerScore,
-          completedPickups: mockUser.completedPickups
+          foodTypePreference: mockUser.foodTypePreference
         };
       }
     }
@@ -473,9 +465,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
             address: user.address,
             gpsLocation: user.gpsLocation,
             ngoCapacity: user.ngoCapacity,
-            foodTypePreference: user.foodTypePreference,
-            volunteerScore: user.volunteerScore,
-            completedPickups: user.completedPickups
+            foodTypePreference: user.foodTypePreference
           };
         }
       }
