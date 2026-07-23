@@ -93,29 +93,33 @@ export class NotificationService {
    * Subscribe to real-time notifications for a user
    */
   static subscribeToNotifications(userId: string, onNew: (notification: any) => void) {
+    console.log("Subscribed");
     const channel = supabase
-      .channel(`notifications:${userId}`)
+      .channel(`notifications:${userId}_${Date.now()}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          console.log("Notification received");
+          console.log(payload);
           const row = payload.new;
-          onNew({
-            _id: row.id,
-            userId: row.user_id,
-            role: 'donor' as const,
-            title: row.title ?? '',
-            message: row.message ?? '',
-            type: row.type ?? 'info',
-            read: row.is_read,
-            donationId: row.related_donation_id ?? undefined,
-            createdAt: row.created_at,
-          });
+          if (!userId || row.user_id === userId || !row.user_id) {
+            onNew({
+              _id: row.id,
+              userId: row.user_id,
+              role: 'donor' as const,
+              title: row.title ?? '',
+              message: row.message ?? '',
+              type: row.type ?? 'info',
+              read: row.is_read,
+              donationId: row.related_donation_id ?? undefined,
+              createdAt: row.created_at,
+            });
+          }
         }
       )
       .subscribe();

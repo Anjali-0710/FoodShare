@@ -177,18 +177,20 @@ export const VolunteerDashboard: React.FC<VolunteerDashboardProps> = ({ theme, n
     );
   };
 
+  const isDark = Boolean(theme?.dark);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* SaaS Glassmorphism Header */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
         <View style={styles.headerUserSection}>
           <View style={styles.avatarHeader}>
             <Text style={styles.avatarHeaderText}>{getInitials(user?.name || 'Volunteer')}</Text>
           </View>
           <View>
-            <Text style={styles.welcomeText}>Logistics Volunteer</Text>
-            <Text style={styles.nameText} numberOfLines={1}>
-              {user?.name || 'Rohan Sharma'}
+            <Text style={[styles.welcomeText, { color: theme.colors.textSecondary }]}>Active Hero Volunteer</Text>
+            <Text style={[styles.nameText, { color: theme.colors.text }]} numberOfLines={1}>
+              {user?.name || 'Hero Volunteer'}
             </Text>
           </View>
         </View>
