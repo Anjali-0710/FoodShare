@@ -1077,7 +1077,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
               </TouchableOpacity>
 
               {showNotifications && (
-                <View style={[styles.dropdownPanel, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', right: width < 480 ? -40 : 0, width: width < 400 ? 280 : 340 }]}>
+                <View style={[styles.dropdownPanel, { zIndex: 10002, backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', right: width < 480 ? -40 : 0, width: width < 400 ? 280 : 340 }]}>
                   <View style={[styles.dropdownHeader, { borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
                     <Text style={[styles.dropdownHeaderTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>Real-time Alerts ({realtimeNotifs.length})</Text>
                     {unreadCount > 0 && (
@@ -1096,7 +1096,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
                         <TouchableOpacity
                           key={item.id || item._id}
                           style={[styles.notificationItem, !item.isRead && { backgroundColor: isDark ? '#0F172A' : '#F0FDF4' }]}
-                          onPress={() => handleMarkAsRead(item.id || item._id || '')}
+                          onPress={() => {
+                            handleMarkAsRead(item.id || item._id || '');
+                            setShowNotifications(false);
+                            navigate('NotificationCenter');
+                          }}
                         >
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.notificationText, { color: isDark ? '#F8FAFC' : '#0F172A' }, !item.isRead && { fontWeight: '800' }]}>
@@ -1112,9 +1116,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
                   <TouchableOpacity
                     style={{ padding: 12, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', alignItems: 'center' }}
                     onPress={() => {
-                      console.log("View All Notifications pressed");
-                      console.log("Navigation object:", navigate);
-                      console.log("Registered target route:", "NotificationCenter");
                       setShowNotifications(false);
                       navigate('NotificationCenter');
                     }}
