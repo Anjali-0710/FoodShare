@@ -29,7 +29,6 @@ import {
   Download,
   Printer,
   X,
-  MessageSquare,
   Menu,
   ChevronLeft,
   ChevronRight,
@@ -2186,14 +2185,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, navigate 
           <Text style={styles.snackbarText}>{snackbar.message}</Text>
         </View>
       )}
-
-      {/* Floating AI chat */}
-      <TouchableOpacity
-        style={styles.floatingAiFab}
-        onPress={() => navigate('AIChat')}
-      >
-        <MessageSquare size={24} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };

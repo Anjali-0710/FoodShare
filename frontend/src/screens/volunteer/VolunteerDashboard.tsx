@@ -5,7 +5,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Award, Navigation, LogOut, RefreshCw, Sun, Moon, ArrowRight,
-  ClipboardCheck, Bell, History, Shield, Zap, CheckCircle, Clock, MessageSquare,
+  ClipboardCheck, Bell, History, Shield, Zap, CheckCircle, Clock,
   Sparkles, MapPin, Truck, Layers, Calendar
 } from 'lucide-react-native';
 import { RootState } from '../../store';
@@ -376,17 +376,7 @@ export const VolunteerDashboard: React.FC<VolunteerDashboardProps> = ({ theme, n
             scrollEnabled={false}
           />
         )}
-      </ScrollView>
-
-      {/* Floating AI FAB */}
-      <TouchableOpacity
-        id="btn-floating-ai-chat"
-        style={styles.floatingAiBtn}
-        onPress={() => navigate('AIChat')}
-      >
-        <MessageSquare size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
+      </ScrollView>    </View>
   );
 };
 

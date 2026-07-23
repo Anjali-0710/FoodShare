@@ -17,7 +17,6 @@ import {
   Package,
   Clock3,
   Truck,
-  MessageSquare,
   Sparkles,
   Layers,
   Calendar,
@@ -404,15 +403,6 @@ export const NgoDashboard: React.FC<NgoDashboardProps> = ({ theme, navigate }) =
           />
         )}
       </ScrollView>
-
-      {/* Floating AI chatbot FAB */}
-      <TouchableOpacity
-        id="btn-floating-ai-chat"
-        style={styles.floatingAiBtn}
-        onPress={() => navigate('AIChat')}
-      >
-        <MessageSquare size={24} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };

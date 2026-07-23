@@ -12,7 +12,6 @@ import {
   ShieldAlert,
   List,
   UserCircle,
-  MessageSquare,
   TrendingUp,
   Heart,
   Calendar,
@@ -286,15 +285,6 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ theme, navigate 
           />
         )}
       </ScrollView>
-      
-      {/* Floating AI chat */}
-      <TouchableOpacity
-        id="btn-floating-ai-chat"
-        style={styles.floatingAiBtn}
-        onPress={() => navigate('AIChat')}
-      >
-        <MessageSquare size={24} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };
