@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Replace with your real Firebase Project configurations
 const firebaseConfig = {
@@ -25,11 +25,11 @@ export const isFirebaseConfigured = (): boolean => {
   );
 };
 
-// Initialize Firebase services conditionally only when real credentials are present
-let appInstance: any = null;
-let authInstance: any = null;
-let dbInstance: any = null;
-let storageInstance: any = null;
+// Initialize Firebase services conditionally only when real credentials are provided
+let appInstance: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 if (isFirebaseConfigured()) {
   try {
