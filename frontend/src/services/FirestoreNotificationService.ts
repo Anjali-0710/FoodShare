@@ -73,9 +73,10 @@ export class FirestoreNotificationService {
     const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
     if (isFirebaseConfigured() && db) {
+      const firestore = db;
       try {
         console.log('[FirestoreNotificationService.createNotification] Calling addDoc...');
-        const docRef = await addDoc(collection(db, 'notifications'), payload);
+        const docRef = await addDoc(collection(firestore, 'notifications'), payload);
         console.log('[FirestoreNotificationService.createNotification] addDoc finished, id:', docRef.id);
         return docRef.id;
       } catch (err) {
@@ -96,10 +97,11 @@ export class FirestoreNotificationService {
    */
   static subscribeAdminNotifications(onUpdate: (notifications: AppNotification[]) => void): () => void {
     if (isFirebaseConfigured() && db) {
+      const firestore = db;
       try {
         console.log('[FirestoreNotificationService.subscribeAdminNotifications] Setting up Firestore listener...');
         const q = query(
-          collection(db, 'notifications'),
+          collection(firestore, 'notifications'),
           where('targetRole', 'in', ['admin', 'all'])
         );
 
@@ -156,9 +158,10 @@ export class FirestoreNotificationService {
     if (!notificationId) return;
 
     if (isFirebaseConfigured() && db) {
+      const firestore = db;
       try {
         console.log('[FirestoreNotificationService.markAsRead] Calling updateDoc...');
-        const docRef = doc(db, 'notifications', notificationId);
+        const docRef = doc(firestore, 'notifications', notificationId);
         await updateDoc(docRef, { isRead: true });
         console.log('[FirestoreNotificationService.markAsRead] updateDoc finished');
       } catch (err) {
@@ -187,11 +190,12 @@ export class FirestoreNotificationService {
     if (unread.length === 0) return;
 
     if (isFirebaseConfigured() && db) {
+      const firestore = db;
       try {
         console.log('[FirestoreNotificationService.markAllAsRead] Calling batch commit...');
-        const batch = writeBatch(db);
+        const batch = writeBatch(firestore);
         unread.forEach(n => {
-          const docRef = doc(db, 'notifications', n.id || n._id || '');
+          const docRef = doc(firestore, 'notifications', n.id || n._id || '');
           batch.update(docRef, { isRead: true });
         });
         await batch.commit();
